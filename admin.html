@@ -1,211 +1,59 @@
-
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Administration · Aldetic</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/base.css">
-<style>
-.reply-box{width:100%;min-height:110px;margin-top:12px;padding:14px;border:1px solid var(--line,#444);border-radius:12px;background:var(--surface,#111);color:inherit;font:inherit;resize:vertical}
-.app-card{display:grid;gap:14px}
-.app-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.app-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.reply-button{padding:11px 18px;border:0;border-radius:9px;background:#7857ff;color:white;font-weight:600;cursor:pointer}
-.reply-button:disabled{opacity:.5;cursor:wait}
-.status-select{padding:9px;border-radius:8px}
-.reply-status{font-size:13px;margin-top:8px}
-</style>
-</head>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administration · Aldetic</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css"></head>
 <body data-protected="true">
 <div id="site-header"></div>
-
 <main>
 <section class="h-hero" style="padding-bottom:24px">
-<div class="wrap">
-<p class="eyebrow">Administration</p>
-<h1 style="font-size:clamp(36px,4.6vw,52px)">Candidatures</h1>
-<p class="lead" style="margin-top:14px">Gérez les candidatures et répondez directement aux candidats.</p>
-</div>
+  <div class="wrap">
+    <p class="eyebrow">Administration</p>
+    <h1 style="font-size:clamp(36px,4.6vw,52px)">Candidatures</h1>
+    <p class="lead" style="margin-top:14px">Accès réservé aux comptes autorisés. Les actions sont journalisées.</p>
+  </div>
 </section>
-
 <section style="padding-top:8px">
-<div class="wrap">
-<p id="state" class="notice warn" hidden></p>
-<div id="panel" hidden style="margin-top:20px">
-<div id="list" style="display:grid;gap:16px"></div>
-<p id="none" class="empty" hidden>Aucune candidature pour le moment.</p>
-</div>
-</div>
+  <div class="wrap">
+    <p id="state" class="notice warn" hidden></p>
+    <div id="panel" hidden style="margin-top:20px">
+      <div id="list" style="display:grid;gap:12px"></div>
+      <p id="none" class="empty" hidden>Aucune candidature pour le moment.</p>
+    </div>
+  </div>
 </section>
 </main>
-
 <div id="site-footer"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/js/config.js"></script>
-<script src="assets/js/supabase.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
 <script src="assets/js/i18n-en.js"></script>
 <script src="assets/js/i18n-es.js"></script>
 <script src="assets/js/i18n-pt.js"></script>
 <script src="assets/js/i18n-ar.js"></script>
 <script src="assets/js/i18n-de.js"></script>
 <script src="assets/js/app.js"></script>
-
 <script>
 document.addEventListener("aldetic:ready", async () => {
   const state = document.getElementById("state");
-  const list = document.getElementById("list");
-  const panel = document.getElementById("panel");
-  const none = document.getElementById("none");
+  const show = (t) => { state.textContent = t; state.hidden = false; };
   const db = window.aldeticDb;
-
-  const show = (message) => {
-    state.textContent = message;
-    state.hidden = false;
-  };
-
-  const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
-  })[c]);
-
-  if (!db) {
-    show("Connexion à la base de données indisponible.");
-    return;
-  }
-
-  const { data: sessionData, error: sessionError } = await db.auth.getSession();
-
-  if (sessionError || !sessionData?.session) {
-    location.href = "connexion.html";
-    return;
-  }
-
+  if (!db) return show("Espace d'administration indisponible pour le moment.");
+  const { data: s } = await db.auth.getSession();
+  if (!s.session) { location.href = "connexion.html"; return; }
+  // Le rôle est vérifié par la base (RLS). Si ce compte n'est pas staff, la requête ne renvoie rien.
+  const { data: apps, error } = await db.from("applications").select("id,email,status,created_at,offer_id").order("created_at", { ascending: false });
+  if (error || !apps) return show("Accès refusé. Ce compte n'a pas le rôle nécessaire.");
+  document.getElementById("panel").hidden = false;
+  document.getElementById("none").hidden = apps.length > 0;
   const statuses = ["received","review","interview","hired","rejected","archived"];
-
-  async function loadApplications() {
-    show("Chargement des candidatures...");
-
-    const { data: apps, error } = await db
-      .from("applications")
-      .select("id,email,status,created_at,offer_id")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      show("Impossible de charger les candidatures. Vérifiez les autorisations administrateur.");
-      console.error(error);
-      return;
-    }
-
-    state.hidden = true;
-    panel.hidden = false;
-    none.hidden = apps.length !== 0;
-
-    list.innerHTML = apps.map(app => `
-      <article class="panel app-card" data-card="${escapeHTML(app.id)}">
-        <div class="app-top">
-          <div>
-            <strong>${escapeHTML(app.email)}</strong>
-            <p class="muted" style="margin:5px 0 0;font-size:13px">
-              ${app.created_at ? new Date(app.created_at).toLocaleString() : ""}
-            </p>
-          </div>
-          <div class="app-actions">
-            <select class="status-select" data-status="${escapeHTML(app.id)}">
-              ${statuses.map(status => `
-                <option value="${status}" ${status === app.status ? "selected" : ""}>${status}</option>
-              `).join("")}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label for="reply-${escapeHTML(app.id)}"><strong>Répondre au candidat</strong></label>
-          <textarea class="reply-box" id="reply-${escapeHTML(app.id)}"
-            data-reply="${escapeHTML(app.id)}"
-            placeholder="Écrivez votre réponse ici..."></textarea>
-          <div class="app-top" style="margin-top:10px">
-            <span class="reply-status muted" data-result="${escapeHTML(app.id)}"></span>
-            <button class="reply-button" type="button" data-send="${escapeHTML(app.id)}">
-              Envoyer la réponse
-            </button>
-          </div>
-        </div>
-      </article>
-    `).join("");
-  }
-
-  list.addEventListener("change", async event => {
-    const id = event.target.dataset.status;
-    if (!id) return;
-
-    const { error } = await db
-      .from("applications")
-      .update({ status: event.target.value })
-      .eq("id", id);
-
-    if (error) {
-      toast("Échec de la mise à jour du statut");
-      console.error(error);
-    } else {
-      toast("Statut mis à jour");
-    }
+  document.getElementById("list").innerHTML = apps.map(a => `<div class="panel" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+    <div><strong>${esc(a.email)}</strong><p class="muted" style="margin:4px 0 0;font-size:14px">${new Date(a.created_at).toLocaleString()}</p></div>
+    <select data-app="${a.id}" style="width:auto">${statuses.map(x => `<option ${x===a.status?"selected":""}>${x}</option>`).join("")}</select></div>`).join("");
+  document.getElementById("list").addEventListener("change", async e => {
+    const id = e.target.dataset.app; if (!id) return;
+    const { error: uerr } = await db.from("applications").update({ status: e.target.value }).eq("id", id);
+    toast(uerr ? "Mise à jour refusée" : "Statut mis à jour");
   });
-
-  list.addEventListener("click", async event => {
-    const button = event.target.closest("[data-send]");
-    if (!button) return;
-
-    const id = button.dataset.send;
-    const textarea = list.querySelector(`[data-reply="${CSS.escape(id)}"]`);
-    const result = list.querySelector(`[data-result="${CSS.escape(id)}"]`);
-    const message = textarea.value.trim();
-
-    if (!message) {
-      result.textContent = "Écrivez une réponse avant l'envoi.";
-      return;
-    }
-
-    if (message.length > 10000) {
-      result.textContent = "Votre réponse est trop longue.";
-      return;
-    }
-
-    button.disabled = true;
-    button.textContent = "Envoi en cours...";
-    result.textContent = "";
-
-    try {
-      const { data, error } = await db.functions.invoke("reply-application", {
-        body: {
-          application_id: id,
-          reply: message
-        }
-      });
-
-      if (error) throw error;
-      if (!data || data.success !== true) {
-        throw new Error(data?.error || "La réponse n'a pas été envoyée.");
-      }
-
-      result.textContent = "Réponse envoyée avec succès.";
-      textarea.value = "";
-      toast("Réponse envoyée");
-    } catch (error) {
-      console.error("Erreur réponse candidature :", error);
-      result.textContent = error.message || "Échec de l'envoi. Réessayez.";
-      toast("Impossible d'envoyer la réponse");
-    } finally {
-      button.disabled = false;
-      button.textContent = "Envoyer la réponse";
-    }
-  });
-
-  await loadApplications();
 });
 </script>
-</body>
-</html>
+</body></html>

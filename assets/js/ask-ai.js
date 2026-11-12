@@ -5,7 +5,7 @@ document.addEventListener("aldetic:ready", () => {
     <button id="ai-open" class="btn" style="position:fixed;right:20px;bottom:20px;z-index:60;border-radius:999px;min-height:48px;box-shadow:0 8px 24px rgba(14,17,22,.18)">${tr("Demander à l'IA")}</button>
     <section id="ai-panel" role="dialog" aria-label="Demander à l'IA" hidden style="position:fixed;right:16px;bottom:80px;width:min(380px,calc(100vw - 32px));z-index:61;background:var(--surface-solid);border:1px solid var(--glass-edge);border-radius:12px;box-shadow:0 20px 50px rgba(14,17,22,.18);padding:18px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong>${tr("Demander à l'IA")}</strong><button id="ai-close" class="btn small ghost" type="button" aria-label="Fermer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-      <textarea id="ai-q" maxlength="1000" placeholder="Votre question (1000 caractères max)" data-ph-en="Your question (1000 characters max)" style="min-height:90px"></textarea>
+      <textarea id="ai-q" maxlength="1000" placeholder=tr("Votre question (1000 caractères max)") data-ph-en="Your question (1000 characters max)" style="min-height:90px"></textarea>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
         <span class="muted" style="font-size:12.5px">${tr("Réponses générées par IA, à vérifier.")}</span>
         <button id="ai-send" class="btn small" type="button">${tr("Envoyer")}</button>
@@ -23,28 +23,22 @@ document.addEventListener("aldetic:ready", () => {
     if (q.length < 3) return show(tr("Écrivez une question."), "warn");
     const db = window.aldeticDb;
     if (!db) return show(tr("Assistant indisponible : la base et le serveur ne sont pas branchés."), "warn");
+    const { data } = await db.auth.getSession();
+    if (!data.session) return show(tr("Connectez-vous pour utiliser l'assistant."), "warn");
+    show(tr("Réflexion en cours…"));
     const send = document.getElementById("ai-send");
     send.disabled = true;
-    show(tr("Réflexion en cours…"));
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
     try {
-      const { data, error: sessionError } = await db.auth.getSession();
-      if (sessionError) throw sessionError;
-      if (!data.session) { show(tr("Connectez-vous pour utiliser l'assistant."), "warn"); return; }
       const res = await fetch(`${window.ALDETIC_CONFIG.SUPABASE_URL}/functions/v1/ask-ai`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}`, apikey: window.ALDETIC_CONFIG.SUPABASE_ANON_KEY },
-        body: JSON.stringify({ question: q }), signal: controller.signal
+        body: JSON.stringify({ question: q })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) return show(json.error || tr("Réponse impossible pour le moment."), "warn");
-      if (typeof json.answer !== "string" || !json.answer.trim()) return show(tr("L'IA n'a pas renvoyé de réponse. Réessayez."), "warn");
-      show(json.answer);
-    } catch (err) {
-      show(err.name === "AbortError" ? tr("Le délai de réponse de l'IA a expiré. Réessayez.") : tr("Connexion au service IA impossible. Vérifiez votre réseau."), "warn");
-    } finally {
-      clearTimeout(timeout); send.disabled = false;
-    }
+      show(json.answer || tr("L'assistant n'a pas renvoyé de réponse."));
+    } catch (error) {
+      show(tr("Connexion au service IA impossible. Vérifiez votre connexion et réessayez."), "warn");
+    } finally { send.disabled = false; }
   };
 });

@@ -45,15 +45,12 @@
 
   async function protectOwnerPage() {
     const current = location.pathname.split("/").pop();
-    if (![OWNER_HOME, "audit-securite.html"].includes(current)) return;
-    document.body.dataset.ownerOnly = "true";
+    if (current !== OWNER_HOME) return;
     if (!db()) return location.replace(LOGIN_PAGE);
     const { data: { user }, error } = await db().auth.getUser();
     if (error || !user) return location.replace(LOGIN_PAGE);
     try {
-      const role = await getRole(user);
-      if (role !== "owner") { location.replace(USER_HOME); return; }
-      document.body.classList.add("owner-authorized");
+      if (await getRole(user) !== "owner") location.replace(USER_HOME);
     } catch (err) {
       console.error("Vérification du rôle owner impossible:", err);
       show("Impossible de vérifier les autorisations administrateur. Accès refusé.");
@@ -89,7 +86,7 @@
       if (!db()) return show("Connexion externe indisponible : vérifiez la configuration Supabase.");
       const { error } = await db().auth.signInWithOAuth({
         provider: button.dataset.oauth,
-        options: { redirectTo: location.origin + "/tableau-de-bord.html" }
+        options: { redirectTo: new URL("tableau-de-bord.html", location.href).href }
       });
       if (error) show(error.message);
     }));

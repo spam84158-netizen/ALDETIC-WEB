@@ -104,9 +104,3 @@ Non vérifié : polices Google (bloquées dans l'environnement de test, un repli
 ### Interfaces complémentaires
 
 Ouvrez `espace.html` pour accéder aux nouveaux espaces : notifications, équipes, Help Center, parrainage, XP et récompenses, profil public, Super Administration, audit sécurité et maintenance. Les logos vectoriels sont rangés dans `assets/brand/logos/`. Consultez `AUDIT.md` pour distinguer les interfaces développées des branchements encore nécessaires.
-
-## Version corrigée — 12 novembre 2026
-
-Les corrections du profil Supabase, de la photo de profil, du menu de compte, de l'assistant IA (CORS/timeout/erreurs), de la vérification téléphonique en mode démo, des réponses aux candidatures, du contact, des équipes, des tickets d'assistance, des notifications et de l'audit sont décrites dans `AUDIT.md`.
-
-**Déploiement obligatoire :** suivre `DEPLOIEMENT-COMPLET.md`, exécuter `supabase/migration-complete-2026-11.sql` puis déployer les Edge Functions. Le code seul ne modifie pas le projet Supabase en production.

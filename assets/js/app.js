@@ -85,12 +85,8 @@
       <header class="site-header"><div class="wrap bar">
         <a class="brand" href="index.html" aria-label="Aldetic Frontiers Ltd — accueil"><img class="brand-logo" src="assets/brand/logos/aldetic-logo.svg" alt="Aldetic Frontiers Ltd"></a>
         <nav class="nav" id="nav">${links}<span class="sep"></span>
-          <a data-guest-link href="connexion.html">${en ? "Log in" : tr("Connexion")}</a>
-          <a data-guest-link class="btn small" href="inscription.html">${en ? "Sign up" : tr("Inscription")}</a>
-          <a data-account-link href="tableau-de-bord.html" hidden>${en ? "My account" : "Mon compte"}</a>
-          <a data-profile-link href="profil-public.html" hidden>${en ? "My profile" : "Mon profil"}</a>
-          <a data-owner-link href="super-admin.html" hidden>Super Admin</a>
-          <button data-logout type="button" class="btn small ghost" hidden>${en ? "Log out" : "Déconnexion"}</button>
+          <a href="connexion.html">${en ? "Log in" : tr("Connexion")}</a>
+          <a class="btn small" href="inscription.html">${en ? "Sign up" : tr("Inscription")}</a>
           <select class="lang" id="lang" aria-label="Language">${opts}</select>
         </nav>
         <button class="menu-btn" id="menu" aria-label="Menu" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -166,22 +162,6 @@
     if (!prof || !prof.phone_verified) location.href = "verification-telephone.html";
   }
 
-  async function syncAccountNav() {
-    const db = window.aldeticDb;
-    const guests = document.querySelectorAll("[data-guest-link]"), account = document.querySelectorAll("[data-account-link]"), profile = document.querySelectorAll("[data-profile-link]"), owner = document.querySelectorAll("[data-owner-link]"), logout = document.querySelectorAll("[data-logout]");
-    if (!db) return;
-    try {
-      const { data: { user } } = await db.auth.getUser();
-      guests.forEach(x => x.hidden = !!user); account.forEach(x => x.hidden = !user); profile.forEach(x => x.hidden = !user); logout.forEach(x => x.hidden = !user);
-      if (user) {
-        const { data: roles } = await db.from("user_roles").select("role").eq("user_id", user.id);
-        const isOwner = (roles || []).some(x => String(x.role).toLowerCase() === "owner");
-        owner.forEach(x => x.hidden = !isOwner);
-      } else owner.forEach(x => x.hidden = true);
-    } catch (e) { console.warn("Account navigation unavailable", e); }
-    logout.forEach(btn => btn.addEventListener("click", async () => { const { error } = await db.auth.signOut(); if (error) return toast("Déconnexion impossible : " + error.message); location.href = "index.html"; }));
-  }
-
   function init() {
     const lang = currentLang();
     const hdr = document.getElementById("site-header");
@@ -193,7 +173,6 @@
     const sel = document.getElementById("lang");
     if (sel) sel.addEventListener("change", e => { localStorage.setItem("aldetic-lang", e.target.value); location.reload(); });
     wireUi();
-    syncAccountNav();
     if (window.alMotion) window.alMotion();
     document.dispatchEvent(new CustomEvent("aldetic:ready", { detail: { lang } }));
   }

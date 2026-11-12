@@ -373,14 +373,3 @@ select.lang { min-width: 110px; }
 .chip-row{display:flex;flex-wrap:wrap;gap:8px}.steps{padding-left:20px;color:var(--fg-2)}.steps li{padding:7px 0}.faq-list{display:grid}.faq-item{border-top:1px solid var(--glass-edge);padding:15px 0}.faq-item summary{font-weight:600;cursor:pointer}.faq-item p{color:var(--muted);margin:10px 0 0}.service-list{display:grid;margin-top:12px}.service-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 0;border-top:1px solid var(--glass-edge)}.service-row span:first-child{display:grid;gap:3px}.service-row small{color:var(--muted);font-size:13px}.status-unknown{font-size:12px;color:var(--muted);padding:5px 10px;border:1px solid var(--glass-edge);border-radius:999px;white-space:nowrap}
 .reward-hero{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.xp-number{font:700 34px var(--display);color:var(--cyan)}.xp-number small{font:500 13px var(--sans);color:var(--muted)}.progress-track{grid-column:1/-1;height:9px;background:var(--surface-2);border:1px solid var(--glass-edge);border-radius:99px;overflow:hidden}.progress-track span{display:block;height:100%;background:var(--holo);border-radius:99px}.avatar-placeholder{width:76px;height:76px;display:grid;place-items:center;border-radius:24px;background:var(--holo);color:white;font:700 30px var(--display);margin:0 auto 14px}.profile-preview{text-align:center}.qr-placeholder{width:150px;height:150px;margin:20px auto 8px;border:1px dashed var(--glass-edge);border-radius:16px;display:grid;place-items:center;padding:12px;color:var(--muted);font-size:12px}.qr-grid{width:68px;height:68px;opacity:.25;background:repeating-conic-gradient(#2457ff 0 25%,transparent 0 50%) 0 0/12px 12px}
 @media(max-width:600px){.module-heading{align-items:flex-start}.module-heading>img{width:52px;height:52px;flex-basis:52px}.module-card{padding:18px}.reward-hero{grid-template-columns:1fr}.xp-number{grid-row:1}.service-row{align-items:flex-start}.event-row .tag{display:none}}
-
-
-/* Aldetic brand ticker — motion respects the user's reduced-motion preference. */
-.al-ticker{overflow:hidden;border-top:1px solid var(--glass-edge);border-bottom:1px solid var(--glass-edge);background:var(--surface);padding:13px 0;margin:0;white-space:nowrap}
-.al-ticker-track{display:flex;align-items:center;gap:30px;width:max-content;animation:aldeticTicker 34s linear infinite;color:var(--muted);font:600 11px/1.4 "JetBrains Mono",monospace;letter-spacing:.18em}
-.al-ticker-track i{font-style:normal;color:var(--cyan);font-size:15px}
-@keyframes aldeticTicker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media(prefers-reduced-motion:reduce){.al-ticker-track{animation:none;transform:none}}
-
-body[data-owner-only="true"] main{visibility:hidden}
-body[data-owner-only="true"].owner-authorized main{visibility:visible}
