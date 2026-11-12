@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+build/
+.wrangler/
+.cache/
+.DS_Store
+*.log
+android/.gradle/
+android/**/build/

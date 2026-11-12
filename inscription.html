@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inscription · Aldetic Frontiers</title>
+<meta name="description" content="Aldetic Frontiers Ltd : Technology Beyond Limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+</head>
+<body data-protected="false">
+<div id="site-header"></div>
+<main>
+<section style="padding-top:clamp(64px,9vw,112px);border:0">
+  <div class="wrap" style="max-width:440px">
+    <p class="eyebrow">Compte</p>
+    <h1 style="font-size:clamp(40px,5vw,56px)">Créer un compte</h1>
+    <form id="auth-form" data-mode="signup" style="margin-top:32px" novalidate>
+      <div class="field"><label for="se">E-mail</label><input id="se" name="email" type="email" required autocomplete="email"></div>
+      <div class="field"><label for="sp">Mot de passe</label><input id="sp" name="password" type="password" required minlength="8" autocomplete="new-password"><small class="muted">8 caractères minimum. Vous recevrez un e-mail de confirmation.</small></div>
+      <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;margin-bottom:18px"><input type="checkbox" required style="width:auto;min-height:0;margin-top:4px"> <span>J'accepte les conditions d'utilisation et la politique de confidentialité.</span></label>
+      <button class="btn primary" type="submit" style="width:100%">Créer mon compte</button>
+      <button class="btn ghost" type="button" data-oauth="google" style="width:100%;margin-top:12px">Continuer avec Google</button>
+      <button class="btn ghost" type="button" data-oauth="github" style="width:100%;margin-top:12px">Continue with GitHub</button>
+    </form>
+    <p id="auth-msg" class="notice warn" hidden style="margin-top:16px"></p>
+  </div>
+</section>
+</main>
+<div id="site-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script>
+<script src="assets/js/i18n-es.js"></script>
+<script src="assets/js/i18n-pt.js"></script>
+<script src="assets/js/i18n-ar.js"></script>
+<script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/motion.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/ask-ai.js"></script>
+</body>
+</html>

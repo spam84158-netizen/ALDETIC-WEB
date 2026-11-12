@@ -1,0 +1,218 @@
+/* Maquette mobile Aldetic. Clair par défaut (cahier : interface blanche), sombre en option.
+   Skill awwwards : pas de noir ni de blanc purs, deux familles maximum, clamp() pour le texte,
+   couleurs en oklch, mouvement réduit respecté. Visuel seulement. */
+
+:root {
+  --bg: oklch(97.2% 0.005 265);       /* fond de page, jamais #fff */
+  --card: oklch(99% 0.003 265);       /* cartes, très proches du blanc */
+  --fill: oklch(92% 0.01 265 / 0.7);
+  --fg: oklch(22% 0.02 265);          /* texte, jamais #000 */
+  --fg-2: oklch(42% 0.02 265);
+  --muted: oklch(56% 0.02 265);
+  --line: oklch(20% 0.02 265 / 0.07);
+
+  --cyan: oklch(74% 0.14 215);
+  --violet: oklch(62% 0.2 295);
+  --ink: oklch(20% 0.03 265);
+  --chrome: oklch(86% 0.01 265);
+
+  --ok: oklch(55% 0.12 160);   --ok-bg: oklch(94% 0.04 160);
+  --run: oklch(52% 0.14 255);  --run-bg: oklch(93% 0.04 255);
+  --warn: oklch(60% 0.13 75);  --warn-bg: oklch(95% 0.05 85);
+  --draft: oklch(50% 0.02 265); --draft-bg: oklch(93% 0.01 265);
+
+  --display: "Sora", "IBM Plex Sans", system-ui, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+
+  --r-card: 20px;
+  --r-tile: 12px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: light;
+}
+
+body.is-dark {
+  --bg: oklch(16% 0.015 265);
+  --card: oklch(21% 0.016 265);
+  --fill: oklch(30% 0.015 265 / 0.7);
+  --fg: oklch(95% 0.005 265);
+  --fg-2: oklch(80% 0.01 265);
+  --muted: oklch(66% 0.015 265);
+  --line: oklch(100% 0 0 / 0.08);
+  --ok-bg: oklch(30% 0.06 160);
+  --run-bg: oklch(30% 0.07 255);
+  --warn-bg: oklch(32% 0.07 75);
+  --draft-bg: oklch(30% 0.01 265);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 15px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* En-tête de la page de maquette */
+.m-intro { padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 48px) 8px; max-width: 980px; margin: 0 auto; }
+.m-kicker { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+.m-intro h1 { margin: 0 0 8px; font: 600 clamp(28px, 4vw, 44px)/1.05 var(--display); letter-spacing: -0.02em; }
+.m-intro p { margin: 0 0 16px; color: var(--fg-2); max-width: 60ch; }
+.m-toggle {
+  min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--card); color: var(--fg); font: 500 14px var(--sans); cursor: pointer;
+}
+
+/* Plateau des écrans : défilement horizontal sur mobile, grille sur bureau */
+.m-stage {
+  display: flex; gap: clamp(20px, 3vw, 40px); overflow-x: auto; padding: 24px clamp(16px, 4vw, 48px) 48px;
+  scroll-snap-type: x mandatory; justify-content: center; flex-wrap: wrap;
+}
+.m-device { margin: 0; display: grid; gap: 12px; justify-items: center; scroll-snap-align: center; }
+.m-device figcaption { color: var(--muted); font-size: 13px; }
+.m-screen {
+  width: 340px; height: 700px; border-radius: 36px; background: var(--bg); overflow: hidden;
+  position: relative; border: 1px solid var(--line);
+  box-shadow: 0 24px 60px -30px oklch(20% 0.03 265 / 0.35);
+  padding: 16px 16px 92px; display: flex; flex-direction: column; gap: 12px;
+}
+
+/* Ligne d'en-tête */
+.m-top { display: flex; align-items: center; justify-content: space-between; }
+.m-logo { display: inline-flex; align-items: center; gap: 8px; font: 600 16px var(--display); }
+.m-logo i {
+  width: 18px; height: 18px; border-radius: 6px;
+  background: conic-gradient(from 200deg, var(--cyan), var(--violet), var(--chrome), var(--cyan));
+}
+.m-avatar {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--chrome); color: var(--ink); font: 600 12px var(--display);
+}
+.m-avatar.big { width: 84px; height: 84px; font-size: 24px; }
+.m-title { font: 600 30px/1.05 var(--display); letter-spacing: -0.02em; padding-top: 4px; }
+.m-h3 { margin: 6px 4px 0; font: 600 16px var(--display); }
+.m-group { margin: 10px 6px 0; color: var(--muted); font-size: 13px; }
+
+/* Carte d'accueil : dégradé Aldetic, action principale en pilule blanche cassée */
+.m-hero {
+  position: relative; overflow: hidden; border-radius: var(--r-card); padding: 20px 18px 18px;
+  background: linear-gradient(135deg, var(--ink) 0%, oklch(40% 0.14 255) 55%, var(--violet) 100%);
+  color: oklch(98% 0.005 265);
+}
+.m-hero-kicker { margin: 0; font-size: 13px; opacity: .8; }
+.m-hero h2 { margin: 6px 0 16px; font: 600 clamp(20px, 6vw, 24px)/1.12 var(--display); max-width: 14ch; }
+.m-hero-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.m-chip {
+  padding: 8px 12px; border-radius: 999px; font-size: 13px; background: oklch(100% 0 0 / 0.16);
+}
+.m-pill {
+  padding: 9px 14px; border-radius: 999px; font: 600 13px var(--sans);
+  background: oklch(98% 0.005 265); color: var(--ink);
+}
+.m-float {
+  position: absolute; width: 40px; height: 40px; border-radius: 12px;
+  background: oklch(100% 0 0 / 0.18); border: 1px solid oklch(100% 0 0 / 0.28);
+  animation: m-drift 6s var(--ease) infinite alternate;
+}
+.m-float.f1 { top: 14px; right: 16px; }
+.m-float.f2 { top: 56px; right: 62px; width: 28px; height: 28px; animation-delay: -2s; }
+.m-float.f3 { bottom: 16px; right: 24px; width: 32px; height: 32px; animation-delay: -4s; }
+@keyframes m-drift { to { transform: translate(-4px, 6px); } }
+
+/* Champs et sélecteurs */
+.m-search {
+  display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 14px;
+  background: var(--fill); color: var(--muted); font-size: 14px;
+}
+.m-search svg, .m-tabs svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.m-seg { display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; border-radius: 12px; background: var(--fill); }
+.m-seg span { text-align: center; padding: 8px 4px; border-radius: 9px; font-size: 14px; color: var(--fg-2); }
+.m-seg span.on { background: var(--card); color: var(--fg); font-weight: 600; box-shadow: 0 1px 2px oklch(20% 0.02 265 / 0.12); }
+
+/* Grille de modules */
+.m-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.m-tile {
+  display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: var(--r-tile);
+  background: var(--card); border: 1px solid var(--line); font: 500 14px var(--sans);
+}
+
+/* Icônes : tuiles teintées, une couleur par module */
+.m-ico {
+  width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: 0 0 36px;
+  color: var(--ink);
+}
+.m-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.m-ico.sm { width: 32px; height: 32px; flex-basis: 32px; border-radius: 9px; }
+.m-ico.c1 { background: color-mix(in oklch, var(--cyan) 22%, transparent); color: oklch(42% 0.12 215); }
+.m-ico.c2 { background: color-mix(in oklch, var(--violet) 18%, transparent); color: oklch(44% 0.2 295); }
+.m-ico.c3 { background: color-mix(in oklch, var(--run) 16%, transparent); color: oklch(42% 0.14 255); }
+.m-ico.c4 { background: color-mix(in oklch, var(--chrome) 60%, transparent); color: var(--fg-2); }
+
+/* Listes groupées */
+.m-card { background: var(--card); border-radius: var(--r-card); border: 1px solid var(--line); overflow: hidden; }
+.m-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.m-row + .m-row { border-top: 1px solid var(--line); }
+.m-row.unread .m-meta strong::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px;
+  background: var(--violet); vertical-align: middle;
+}
+.m-meta { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.m-meta strong { font: 600 14px var(--sans); }
+.m-meta small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-chev { color: var(--muted); font-size: 18px; }
+
+/* Statuts en pastilles */
+.m-status { padding: 4px 9px; border-radius: 999px; font: 500 12px var(--sans); white-space: nowrap; }
+.m-status.ok { color: var(--ok); background: var(--ok-bg); }
+.m-status.run { color: var(--run); background: var(--run-bg); }
+.m-status.warn { color: var(--warn); background: var(--warn-bg); }
+.m-status.draft { color: var(--draft); background: var(--draft-bg); }
+
+/* Interrupteur */
+.m-switch { position: relative; width: 44px; height: 26px; border-radius: 999px; background: var(--fill); flex: 0 0 44px; }
+.m-switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--card); box-shadow: 0 1px 3px oklch(20% 0.02 265 / 0.2); transition: transform .3s var(--ease);
+}
+.m-switch.on { background: var(--run); }
+.m-switch.on::after { transform: translateX(18px); }
+
+.m-profile { display: grid; justify-items: center; gap: 4px; padding-top: 8px; text-align: center; }
+.m-profile strong { font: 600 18px var(--display); }
+.m-profile small { color: var(--muted); }
+.m-ring { padding: 4px; border-radius: 50%; background: conic-gradient(var(--cyan), var(--violet), var(--chrome), var(--cyan)); }
+
+/* Barre d'onglets : pastille teintée sur l'onglet actif, libellés visibles */
+.m-tabs {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; height: 70px; border-radius: 24px;
+  background: var(--card); border: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr);
+  align-items: center; padding: 6px; box-shadow: 0 12px 30px -18px oklch(20% 0.03 265 / 0.35);
+}
+.m-tabs a {
+  display: grid; justify-items: center; gap: 2px; padding: 8px 0; border-radius: 18px;
+  font-size: 11.5px; color: var(--muted); text-decoration: none; position: relative;
+}
+.m-tabs a.on { color: var(--run); background: var(--run-bg); font-weight: 600; }
+.m-dot {
+  position: absolute; top: 6px; right: calc(50% - 16px); width: 8px; height: 8px; border-radius: 50%;
+  background: var(--violet); box-shadow: 0 0 0 2px var(--card);
+}
+
+/* Mouvement réduit : pas de dérive ni de transition */
+@media (prefers-reduced-motion: reduce) {
+  .m-float, .m-switch::after { animation: none !important; transition: none !important; }
+}
+
+/* Petits écrans : la maquette occupe la largeur disponible */
+@media (max-width: 380px) {
+  .m-screen { width: calc(100vw - 32px); }
+}
+
+/* États interactifs honnêtes de la maquette */
+button.m-switch { border: 0; padding: 0; cursor: pointer; }
+.m-switch[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.m-tabs a[aria-disabled="true"] { pointer-events: none; cursor: default; }
+button.m-toggle:focus-visible, button.m-switch:focus-visible { outline: 2px solid var(--run); outline-offset: 3px; }

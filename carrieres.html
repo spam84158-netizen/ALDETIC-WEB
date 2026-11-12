@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carrières · Aldetic Frontiers</title>
+<meta name="description" content="Aldetic Frontiers Ltd : Technology Beyond Limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+</head>
+<body data-protected="false">
+<div id="site-header"></div>
+<main>
+<section class="h-hero" style="padding-bottom:32px">
+  <div class="wrap">
+    <p class="eyebrow">Carrières</p>
+    <h1 style="font-size:clamp(36px,5.4vw,60px)">Travaillez sur des outils utilisés au quotidien.</h1>
+    <p class="lead" style="margin-top:18px">Chaque offre précise ses missions, les compétences attendues, la localisation ou le télétravail, et sa date de publication.</p>
+  </div>
+</section>
+<section style="padding-top:8px">
+  <div class="wrap h-two" style="align-items:start">
+    <div>
+      <p class="eyebrow">Offres ouvertes</p>
+      <div id="offers" class="empty"><p style="margin:0 0 6px;color:var(--fg)">Aucune offre publiée pour le moment.</p><p style="margin:0">Envoyez une candidature spontanée avec le formulaire. Chaque candidature reçoit une réponse.</p></div>
+      <div class="h-list card-list" style="margin-top:20px">
+        <div class="h-row"><span class="h-row-meta"><strong>Suivi de candidature</strong><small>Reçue, en examen, entretien, retenue, non retenue ou archivée.</small></span></div>
+      </div>
+    </div>
+    <form class="panel" id="apply" novalidate>
+      <p class="eyebrow" style="margin-bottom:14px">Candidature spontanée</p>
+      <div class="field"><label for="n">Nom complet</label><input id="n" required autocomplete="name"><span class="err" id="en"></span></div>
+      <div class="field"><label for="m">E-mail</label><input id="m" type="email" required autocomplete="email"><span class="err" id="em"></span></div>
+      <div class="field"><label for="ro">Profil</label><select id="ro"><option>Développeur</option><option>Designer UI/UX</option><option>IA et données</option><option>Cybersécurité (défensive)</option><option>Chef de projet</option><option>Autre</option></select></div>
+      <div class="field"><label for="cv">CV ou portfolio</label><input id="cv" type="file" accept=".pdf,.docx" aria-describedby="cvh" disabled><small id="cvh">Le dépôt de fichiers sera activé dans une prochaine étape. Pour le moment, ce fichier n'est pas transmis.</small><span class="err" id="ec"></span></div>
+      <div class="field"><label for="msg">Message</label><textarea id="msg" maxlength="1000"></textarea></div>
+      <label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;margin-bottom:18px"><input type="checkbox" id="ok" style="width:auto;min-height:0;margin-top:4px"> <span>J'accepte que mes données soient traitées pour examiner ma candidature, selon la politique de confidentialité.</span></label>
+      <button class="btn primary" type="submit" style="width:100%">Envoyer ma candidature</button>
+      <p class="notice warn" id="ap" style="margin-top:16px" hidden></p>
+    </form>
+  </div>
+</section>
+</main>
+<script>
+document.addEventListener("aldetic:ready", () => {
+  const f = document.getElementById("apply");
+  f.addEventListener("submit", async e => {
+    e.preventDefault(); let ok = true;
+    const set = (id, msg) => { document.getElementById(id).textContent = msg; if (msg) ok = false; };
+    set("en", document.getElementById("n").value.trim().length < 2 ? tr("Indiquez votre nom.") : "");
+    set("em", /^\S+@\S+\.\S+$/.test(document.getElementById("m").value) ? "" : tr("Adresse e-mail invalide."));
+    const file = document.getElementById("cv").files[0];
+    if (file) {
+      const okType = /\.(pdf|docx)$/i.test(file.name);
+      set("ec", !okType ? tr("Format non accepté (PDF ou DOCX).") : file.size > 5 * 1024 * 1024 ? tr("Fichier trop lourd (5 Mo maximum).") : "");
+    }
+    if (!document.getElementById("ok").checked) { ok = false; toast(tr("Acceptez le traitement de vos données.")); }
+    if (!ok) return;
+    const ap = document.getElementById("ap");
+    ap.hidden = false;
+    if (!window.aldeticDb || !window.ALDETIC_CONFIG?.SUPABASE_URL || !window.ALDETIC_CONFIG?.SUPABASE_ANON_KEY) {
+      ap.textContent = tr("Envoi indisponible : la configuration du serveur est incomplète. Vos informations n'ont pas été transmises.");
+      return;
+    }
+    const submit = f.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    ap.textContent = tr("Envoi en cours…");
+    const payload = {
+      name: document.getElementById("n").value.trim(),
+      email: document.getElementById("m").value.trim(),
+      profile: document.getElementById("ro").value,
+      message: document.getElementById("msg").value.trim()
+    };
+    try {
+      const response = await fetch(`${window.ALDETIC_CONFIG.SUPABASE_URL}/functions/v1/notify-application`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": window.ALDETIC_CONFIG.SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${window.ALDETIC_CONFIG.SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error || "Envoi impossible.");
+      const adminSent = result.admin_notified === true || result.notified === true;
+      const candidateSent = result.candidate_confirmed === true;
+      if (adminSent && candidateSent) {
+        ap.textContent = tr("Candidature reçue. Un e-mail de confirmation vous a été envoyé et l'équipe Aldetic a été notifiée.");
+      } else if (adminSent) {
+        ap.textContent = tr("Candidature enregistrée. L'équipe Aldetic a été notifiée, mais l'e-mail de confirmation au candidat n'a pas pu être envoyé.");
+      } else {
+        ap.textContent = tr("Candidature enregistrée, mais l'envoi des e-mails n'a pas abouti. L'équipe doit vérifier la configuration Resend.");
+      }
+      if (result.saved === true || result.ok === true) f.reset();
+    } catch (error) {
+      ap.textContent = tr("Envoi impossible : ") + (error.message || "erreur de connexion.");
+    } finally {
+      submit.disabled = false;
+    }
+  });
+});
+</script>
+<div id="site-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script>
+<script src="assets/js/i18n-es.js"></script>
+<script src="assets/js/i18n-pt.js"></script>
+<script src="assets/js/i18n-ar.js"></script>
+<script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/motion.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/ask-ai.js"></script>
+
+</body>
+</html>

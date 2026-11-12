@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Documentation · Aldetic Frontiers</title>
+<meta name="description" content="Aldetic Frontiers Ltd : Technology Beyond Limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+</head>
+<body data-protected="false">
+<div id="site-header"></div>
+<main>
+<section class="h-hero" style="padding-bottom:24px">
+  <div class="wrap">
+    <p class="eyebrow">Documentation</p>
+    <h1 style="font-size:clamp(36px,5.4vw,60px)">Guides et références.</h1>
+  </div>
+</section>
+<section style="padding-top:8px">
+  <div class="wrap h-docs">
+    <aside class="h-docs-nav">
+      <input id="dq" class="search-field" type="search" placeholder="Rechercher dans la documentation" aria-label="Rechercher dans la documentation">
+      <a href="#start">Premiers pas</a>
+      <a href="#termux">MY GIT depuis Termux</a>
+      <a href="#zip">Importer un ZIP</a>
+      <a href="#security">Sécurité et secrets</a>
+    </aside>
+    <div class="h-docs-body">
+      <article id="start" class="h-doc"><h2>Premiers pas</h2><p class="muted">Créez un compte, puis un projet depuis votre tableau de bord. Votre projet reçoit un dépôt sur MY GIT.</p></article>
+      <article id="termux" class="h-doc"><h2>MY GIT depuis Termux</h2>
+        <p class="muted">Extrayez votre archive sur le téléphone, puis envoyez les fichiers vers votre dépôt. Remplacez l'adresse par celle affichée sur la page de votre dépôt.</p>
+        <pre class="code"><button class="btn small ghost copy" data-copy="pkg install git unzip" type="button">Copier</button>pkg install git unzip
+cd ~/storage/downloads
+unzip MONPROJET.zip -d MONPROJET
+cd MONPROJET
+git init
+git add .
+git commit -m "Initial project upload"
+git branch -M main
+git remote add origin ADRESSE_DU_DEPOT
+git push -u origin main</pre>
+        <p class="notice warn" style="margin-top:16px">Ne mettez jamais de mot de passe ou de jeton dans une commande. Git vous demandera de vous authentifier.</p>
+      </article>
+      <article id="zip" class="h-doc"><h2>Importer un ZIP</h2><p class="muted">MY CLOUD accepte les archives ZIP dans la limite de votre quota. Les archives sont vérifiées avant extraction, et rien ne s'exécute automatiquement.</p></article>
+      <article id="security" class="h-doc"><h2>Sécurité et secrets</h2><p class="muted">Gardez les clés et mots de passe hors des dépôts. Utilisez des variables d'environnement. Si un secret est exposé, révoquez-le immédiatement.</p></article>
+    </div>
+  </div>
+</section>
+</main>
+<script>
+document.addEventListener("aldetic:ready", () => {
+  const q = document.getElementById("dq");
+  q.addEventListener("input", () => {
+    const v = q.value.toLowerCase();
+    document.querySelectorAll("article").forEach(a => a.style.display = !v || a.textContent.toLowerCase().includes(v) ? "" : "none");
+  });
+});
+</script>
+<div id="site-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script>
+<script src="assets/js/i18n-es.js"></script>
+<script src="assets/js/i18n-pt.js"></script>
+<script src="assets/js/i18n-ar.js"></script>
+<script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/motion.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/ask-ai.js"></script>
+
+</body>
+</html>
