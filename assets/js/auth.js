@@ -45,12 +45,15 @@
 
   async function protectOwnerPage() {
     const current = location.pathname.split("/").pop();
-    if (current !== OWNER_HOME) return;
+    if (![OWNER_HOME, "audit-securite.html"].includes(current)) return;
+    document.body.dataset.ownerOnly = "true";
     if (!db()) return location.replace(LOGIN_PAGE);
     const { data: { user }, error } = await db().auth.getUser();
     if (error || !user) return location.replace(LOGIN_PAGE);
     try {
-      if (await getRole(user) !== "owner") location.replace(USER_HOME);
+      const role = await getRole(user);
+      if (role !== "owner") { location.replace(USER_HOME); return; }
+      document.body.classList.add("owner-authorized");
     } catch (err) {
       console.error("Vérification du rôle owner impossible:", err);
       show("Impossible de vérifier les autorisations administrateur. Accès refusé.");

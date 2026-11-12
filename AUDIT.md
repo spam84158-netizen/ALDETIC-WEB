@@ -1,170 +1,63 @@
-# Audit fonctionnel — Aldetic (v6)
+# ALDETIC — audit fonctionnel après corrections (12 novembre 2026)
 
-Statuts : **WORKING** (fonctionne, testé) · **PARTIAL** (une partie fonctionne) · **NOT IMPLEMENTED** (absent) · **BLOCKED** (dépend d'un service ou d'identifiants absents).
-Tests : `flows3.py` (parcours), `flows4.py` (recherche et copie), `audit.py` (inventaire des contrôles, aucune erreur au chargement sur les 25 pages).
-Pour chaque élément, « Résultat » indique le test réellement exécuté. « Non testé » signifie qu'aucun test n'a été fait : ce n'est donc pas un succès.
+## Périmètre vérifié
 
-## 1. Site institutionnel
+- Projet complet multi-pages et scripts partagés.
+- Contrôle syntaxique Node.js des scripts inline HTML : **28 blocs contrôlés, 0 erreur après correction**.
+- Contrôle syntaxique de `assets/js/app.js`, `assets/js/ask-ai.js` et `assets/js/phone.js` : **OK**.
+- Vérification statique des références de configuration : l'URL Supabase et la clé publique déjà présentes dans `assets/js/config.js` ont été conservées.
+- **Non effectué depuis cet environnement :** exécution réelle sur le projet Supabase, envoi réel Resend, appel réel Groq, test OAuth, test sur le navigateur du téléphone. Ces vérifications nécessitent le déploiement SQL/Edge et une session réelle.
 
-| Élément | Comportement attendu | Statut | Manque | Dépendance | Test | Résultat |
-|---|---|---|---|---|---|---|
-| Navigation desktop et lien par page | Ouvrir chaque page | WORKING | — | — | audit.py (25 pages chargées, 0 erreur) | PASS |
-| Menu burger mobile | Ouvrir / fermer le menu | WORKING | — | — | flows3 `t_menu` | PASS |
-| Sélecteur de langue | Changer de langue, mémoriser | WORKING | Traductions es/pt/de/ar incomplètes (texte anglais de repli) | — | audit.py + libellé zh corrigé | PASS (libellé) |
-| Accueil : code illustratif | Affichage seulement | WORKING | Marqué « Exemple illustratif » | — | visuel | PASS |
-| Accueil : bouton « Demander à l'IA » | Ouvrir le panneau | WORKING | — | — | flows3 `t_ia` | PASS |
-| Assistant IA : envoi | Réponse du modèle | BLOCKED | Fonction serveur `ask-ai`, clé GROQ_API_KEY, modèle à confirmer | Supabase + clé fournisseur | flows3 `t_ia` : aucune réponse inventée | PASS (pas de faux texte) |
-| Services : onglets | Changer de catégorie | WORKING | — | — | flows3 `t_services` | PASS |
-| À propos, conditions, confidentialité | Lecture | PARTIAL | Conditions et confidentialité sont des brouillons à faire relire | Relecture juridique | — | Non testé (contenu) |
-| Projets : recherche | Filtrer, afficher l'état vide | WORKING | Liste vide tant qu'aucun projet public | — | flows4 | PASS |
-| Tarifs : bouton « Pas encore disponible » | Désactivé | NOT IMPLEMENTED | Formules payantes non définies | Décision commerciale, moyens de paiement | audit.py (désactivé) | Désactivé et signalé |
-| Carrières : offres | Afficher les offres publiées | PARTIAL | Table `job_offers` non alimentée : état vide affiché | Supabase | — | Non testé |
-| Carrières : candidature | Valider, enregistrer | PARTIAL | Validation WORKING ; enregistrement réel `applications` écrit mais jamais exécuté | Supabase | flows3 `t_candidature` : sans base, message honnête | PASS (sans base) |
-| Contact : formulaire | Valider, envoyer | PARTIAL | Validation WORKING ; envoi BLOCKED, message honnête affiché | Service de messagerie | flows3 `t_contact` | PASS |
+## Corrections livrées dans le code
 
-## 2. Authentification et comptes
-
-| Élément | Comportement attendu | Statut | Manque | Dépendance | Test | Résultat |
-|---|---|---|---|---|---|---|
-| Connexion (e-mail + mot de passe) | Ouvrir une session | BLOCKED | Projet Supabase non configuré (config.js) | URL et clé anon Supabase | — | Non testé |
-| Inscription | Créer un compte, e-mail de vérification | BLOCKED | Idem | Supabase Auth | — | Non testé |
-| Connexion Google | OAuth | BLOCKED | Fournisseur Google non activé | Supabase + identifiants Google | — | Non testé |
-| Mot de passe oublié | Envoi du lien | NOT IMPLEMENTED | Aucun écran dédié | Supabase Auth | — | — |
-| Vérification téléphone : saisie | Valider l'indicatif et la longueur | WORKING | — | — | flows3 `t_telephone` (redirection sans compte) | PASS |
-| Vérification téléphone : envoi du code | Envoyer un SMS, vérifier le code | BLOCKED | Aucun code n'est inventé. Le fournisseur SMS n'est pas choisi | Fournisseur SMS + validation serveur | Code auto-rempli supprimé | PASS (corrigé) |
-| Vérification téléphone : marquage « vérifié » | Marquer le compte | BLOCKED | Le marquage n'a lieu qu'après un code réel côté serveur | Idem | Corrigé : plus jamais marqué en navigateur | PASS (corrigé) |
-| Pages protégées | Accès seulement connecté et vérifié | PARTIAL | Logique présente, testée sans compte | Supabase | flows3 `t_telephone` ; MY GIT redirige vers connexion | PASS |
-| Tableau de bord | Quotas, activité | PARTIAL | Aucune donnée réelle : texte honnête, pas de chiffre inventé | Supabase, table `ai_usage` | Non testé (protégé) | — |
-
-## 3. Developer Hub (communauté)
-
-| Élément | Comportement attendu | Statut | Manque | Dépendance | Test | Résultat |
-|---|---|---|---|---|---|---|
-| Publier un message | Ajouter au fil | PARTIAL | Stockage navigateur uniquement (démo), pas de comptes | Supabase `posts` | flows3 `t_communaute` | PASS (démo locale) |
-| J'aime | Compter | PARTIAL | Local, pas partagé | Supabase | Non testé isolément | Non testé |
-| Signaler | Envoyer au modérateur | BLOCKED | Message corrigé : « non transmis » (avant : faux « envoyé ») | Table de modération | flows3 `t_communaute` | PASS (corrigé) |
-| Commentaires, favoris, suivi, profils publics, modération | — | NOT IMPLEMENTED | Non développés | Supabase, règles RLS | — | — |
-
-## 4. Modules techniques
-
-| Module | Élément | Statut | Manque | Dépendance | Test | Résultat |
-|---|---|---|---|---|---|---|
-| MY GIT | Créer un dépôt | PARTIAL | Enregistrement local uniquement ; le message l'indique. Page protégée : sans compte, redirection vers connexion (comportement voulu) | Moteur Git (Forgejo/Gitea), serveur | flows3 `t_git` : le test attendait à tort une page publique ; la redirection est correcte | Redirection OK ; création non testée |
-| MY GIT | Commandes Termux copiables | WORKING | — | — | flows4 (bouton copier : notification) | PASS |
-| MY GIT | Cloner, pousser, branches, historique, accès | NOT IMPLEMENTED | Aucun serveur Git | Moteur Git | — | — |
-| MY CLOUD | Choisir un ZIP | PARTIAL | Contrôle local (extension, taille) fonctionne ; aucun envoi | Stockage | Corrigé : message honnête | PASS (contrôle) |
-| MY CLOUD | Extraire, détecter, construire, déployer, journaux, domaines, rollback | NOT IMPLEMENTED | Aucun pipeline | Serveur de build, stockage | — | — |
-| AI CHAT | Envoyer un message, historique, modèles | BLOCKED | Champ et bouton désactivés, modèle non confirmé | Fonction serveur + fournisseur IA | — | Désactivé et signalé |
-| AI STUDIO | Création de projet, génération, exécution, export | NOT IMPLEMENTED | Page « en préparation » | Agent, sandbox d'exécution | — | — |
-| MY EDITOR | Explorateur, éditeur, enregistrement | NOT IMPLEMENTED | Page « en préparation » | — | — | — |
-| MY TERMINAL | Terminal isolé | NOT IMPLEMENTED | Page « en préparation » | Sandbox isolée (jamais de shell serveur non restreint) | — | — |
-| API CENTER | Créer une clé | BLOCKED | Bouton désactivé | Serveur, hachage des clés, quotas | — | Désactivé et signalé |
-| API CENTER | Documentation, exemples | PARTIAL | Documentation présente, non vérifiée | — | — | Non testé |
-| Admin (candidatures) | Lister, changer le statut | BLOCKED | Nécessite Supabase, rôle propriétaire | Supabase + RLS | — | Non testé |
-| Super Admin : autres modules | Utilisateurs, paiements, parrainages, sécurité, journaux | NOT IMPLEMENTED | Non développés | Supabase, paiements | — | — |
-
-## 5. Fondateur et portfolio
-
-| Élément | Statut | Test | Résultat |
-|---|---|---|---|
-| Page publique sans compte | WORKING | audit.py | PASS |
-| Formulaire de contact : validation | WORKING | Non testé isolément (la validation est exécutée à la soumission) | Non testé |
-| Formulaire de contact : envoi | BLOCKED | Bouton désactivé, texte explicite | Désactivé et signalé |
-| Coordonnées (e-mail, Telegram) | BLOCKED | Non fournies par le propriétaire | « à renseigner » |
-
-## 6. Maquette mobile (visuel)
-
-| Élément | Statut | Test | Résultat |
-|---|---|---|---|
-| Bouton « Passer en sombre » | WORKING | flows3 `t_maquette` | PASS |
-| Interrupteur « Mode sombre » | WORKING | flows3 `t_maquette` | PASS |
-| Interrupteur « Notifications » | BLOCKED | Désactivé, signalé « Non branché » | Désactivé et signalé |
-| Onglets de la barre | Non cliquables (maquette) | Désactivés | Désactivés et signalés |
-
-## 7. Android
-
-| Élément | Statut | Dépendance |
+| Fonction | État du code | Dépendance / remarque |
 |---|---|---|
-| Coque WebView (Kotlin) | PARTIAL | Code présent, non compilé |
-| APK installable | BLOCKED | SDK Android, Gradle, clé de signature |
-| Sur appareil réel | BLOCKED | Appareil ou émulateur |
+| Assistant IA | CORS + requête OPTIONS, authentification vérifiée dans la fonction, gestion d'erreurs, timeout Groq, réponse vide gérée, quota contrôlé | Déployer `ask-ai`; vérifier `GROQ_API_KEY` et le modèle réellement actif dans Groq. |
+| Vérification téléphone | Code de démo `000000` rempli automatiquement après 5 secondes puis envoyé automatiquement à la fonction serveur; le serveur met `phone_verified=true` | Déployer `verify-demo-phone` et définir `DEMO_PHONE_VERIFICATION=true`. C'est une simulation, pas un SMS ni une preuve de possession du numéro. |
+| Profil | Nom, identifiant, bio, site, visibilité; chargement et sauvegarde Supabase; photo upload Storage avec limite 2 Mo | Exécuter la migration pour les colonnes, droits et bucket `avatars`. |
+| Navigation compte | Connexion/inscription masquées si connecté; liens Mon compte et Mon profil; Super Admin visible uniquement au rôle owner; déconnexion | Nécessite Supabase Auth et la table `user_roles`. |
+| Candidatures | Enregistrement serveur, notification Resend, statut admin; réponse saisissable et envoyée par e-mail via `reply-application` | Déployer fonctions; migration; rôle owner/admin; secrets Resend et domaine expéditeur vérifié. |
+| Contact | Le message est enregistré dans `contact_messages`; notification e-mail si Resend est configuré; pas de faux succès en cas d'échec | Migration et secrets Resend. |
+| Centre d'aide | Création réelle de ticket et premier message; historique des tickets de l'utilisateur | Migration et compte connecté. Interface d'administration des tickets encore à développer. |
+| Équipes | Création/suppression des équipes et stockage des invitations dans Supabase; droits RLS | Migration. L'invitation est enregistrée mais l'e-mail automatique et l'acceptation par lien ne sont pas encore implémentés. |
+| Notifications | Lecture des notifications serveur, marquage lu, préférences persistées par compte | Migration. Les notifications doivent être créées par les fonctions serveur; les notifications push ne sont pas intégrées. |
+| Audit sécurité | Lecture des 100 derniers événements réels, filtre par action, compteur d'événements suspects basé sur le nom de l'action | Rôle owner et migration. Ce compteur n'est pas un moteur de détection de fraude. |
+| Super Admin | Accès de page et lien de navigation réservés au rôle owner | Le tableau de bord central reste partiellement une interface : gestion des paiements, comptes et modération non construite. |
+| Motion design | Animations d'entrée, révélations au scroll, parallaxe légère; ticker animé ajouté à l'accueil | GSAP/ScrollTrigger chargés par les pages. Respect de `prefers-reduced-motion`. |
 
-## 8. Interfaces complémentaires ajoutées (passe Aldetic)
+## Modules qui restent partiels ou non opérationnels
 
-Les interfaces suivantes sont maintenant présentes dans le projet : `notifications.html`, `equipes.html`, `aide.html`, `parrainage.html`, `recompenses.html`, `profil-public.html`, `super-admin.html`, `audit-securite.html`, `maintenance.html`, `mot-de-passe-oublie.html` et le hub `espace.html`. Les logos vectoriels dédiés sont dans `assets/brand/logos/`.
+| Module | État honnête | Ce qui manque pour le rendre réel |
+|---|---|---|
+| MY GIT | Aperçu local et commandes Termux | Serveur Forgejo/Gitea, création de dépôts via API, authentification et permissions. |
+| MY CLOUD | Interface et contrôle local du fichier | Stockage privé, extraction isolée, runner de build, déploiement, journaux, domaines et rollback. |
+| AI CHAT distinct | Interface non reliée au moteur de chat complet | Historique, sessions, modèles et branchement à l'API IA. Le widget « Demander à l'IA » est séparé et corrigé. |
+| AI STUDIO | Maquette / en préparation | Agent de génération, sandbox, exécution et export. |
+| MY EDITOR | Maquette / en préparation | Explorateur et stockage de fichiers avec sauvegarde réelle. |
+| MY TERMINAL | Maquette / en préparation | Terminal isolé et sandbox sécurisée. Ne jamais exposer un shell serveur général. |
+| API CENTER | Documentation / interface | Génération et hachage de clés, quotas, révocation et endpoint API. |
+| Parrainage | Maquette | Attribution anti-fraude côté serveur, lien d'invitation et règle de récompense. |
+| Récompenses / XP | Maquette | Calcul et attribution serveur des XP, niveaux et badges. |
+| Profil public partageable | Paramètres de profil sauvegardés | Route publique de profil, slug public, rendu public et QR code. |
+| APK Android | Coque de projet | Compilation Gradle/SDK, signature et test sur appareil réel. |
+| Paiements / abonnements | Non implémentés | Choix du prestataire, règles commerciales et webhooks vérifiés côté serveur. |
+| SMS réel | Non implémenté | Fournisseur SMS couvrant la Côte d'Ivoire, identifiants et vérification serveur. |
 
-**Important :** les écrans et leurs états visuels sont développés. Les fonctions qui nécessitent une base, un service e-mail/SMS, des rôles, des journaux serveur, un moteur QR public ou une supervision restent à brancher et à rendre opérationnelles. Les aperçus locaux sont explicitement signalés comme tels ; ils ne simulent pas un envoi ou une validation serveur.
+## Sécurité ajoutée
 
-## 9. Skills et dépendances
+- `supabase/config.toml` désactive la validation JWT automatique de la passerelle pour les Edge Functions concernées, afin de permettre la clé `sb_publishable_` utilisée par le site. Les fonctions privées vérifient elles-mêmes le jeton utilisateur; les fonctions publiques contact/candidature valident les champs et écrivent avec le service role.
+- Le navigateur ne reçoit jamais la clé service role, Groq ou Resend.
+- Les écritures `phone_verified` sont retirées des droits `authenticated`; seule la fonction serveur de démonstration les modifie.
+- Les profils sont limités à leur propre ligne et à des colonnes modifiables définies.
+- Les pages Super Admin/Audit vérifient le rôle owner; les données administratives sont filtrées par RLS.
+- Les photos sont dans le bucket `avatars`, lecture publique des fichiers, écriture limitée au dossier UUID du propriétaire.
 
-| Élément | Statut |
-|---|---|
-| `frontend-design`, `awwwards`, `karpathy-guidelines` | Lues et appliquées (direction, tokens, mouvement réduit, changements chirurgicaux) |
-| `gsap-*`, `genjutsu`, `design-taste`, `ui-ux-pro-max`, `playwright-skill` | BLOCKED : absentes de l'environnement |
+## À faire dans Supabase avant les tests réels
 
-## 10. Faux succès corrigés pendant cet audit
+1. Exécuter `supabase/migration-complete-2026-11.sql` dans SQL Editor.
+2. Déployer les cinq Edge Functions listées dans `DEPLOIEMENT-COMPLET.md`.
+3. Vérifier les secrets Resend et Groq.
+4. Définir `DEMO_PHONE_VERIFICATION=true` uniquement si le mode de test téléphonique est voulu.
+5. Vérifier que le compte propriétaire possède bien `role='owner'` dans `user_roles`.
 
-1. Vérification téléphone : code auto-rempli et compte marqué vérifié en navigateur. **Supprimé.**
-2. Candidature : « Candidature reçue » affiché sans enregistrement. **Enregistrement réel, sinon message honnête.**
-3. Signalement : « envoyé aux modérateurs » sans envoi. **Remplacé par « non transmis ».**
-4. MY CLOUD : « reçue, vérification en cours » sans envoi. **Remplacé par « contrôle local, aucune archive envoyée ».**
-5. Maquette : interrupteurs statiques et liens `#`. **Un seul interrupteur agit ; les autres sont désactivés.**
-6. Libellé 中文 manquant dans le choix de langue (affichait « undefined »). **Corrigé.**
-
-## 11. Ce qui reste nécessaire pour compléter
-
-- **Supabase** : URL, clé anon, exécution de `schema.sql`, activation e-mail et Google (débloque connexion, inscription, profils, candidatures, admin, communauté).
-- **Fournisseur SMS** choisi et validation côté serveur (débloque la vérification téléphone).
-- **Fonction serveur de messagerie** (contact, signalements).
-- **Fournisseur IA** et clé côté serveur (débloque AI CHAT, Demander à l'IA).
-- **Moteur Git** et serveur de build (MY GIT, MY CLOUD).
-- **SDK Android, Gradle, clé de signature** (APK).
-- **Branchement et mise en service** : notifications, équipes, badges/XP, parrainage, support, profils publics/QR, Super Admin, audit et supervision. Les interfaces correspondantes sont maintenant créées dans la passe Aldetic complémentaire.
-
-## 12. Application une page (`aldetic-app.html`)
-
-| Élément | Statut | Test | Résultat |
-|---|---|---|---|
-| Écran de bienvenue, boutons d'accès | WORKING | app_test.py | PASS |
-| Connexion et inscription | BLOCKED (Supabase) | Boutons désactivés, aucun faux succès | PASS |
-| Continuer sans compte (mode local) | WORKING | Accès à l'accueil, mémorisé au rechargement | PASS |
-| Barre d'onglets (accueil, projets, alertes, profil) | WORKING | Changement de vue | PASS |
-| Projets : ajout, recherche, filtres, stockage local | WORKING (local uniquement) | Ajout, conservation après rechargement, filtres, état vide | PASS |
-| Projets : validation du nom | WORKING | Nom de 1 caractère refusé | PASS |
-| Alertes : lecture, tout marquer comme lu, badge | WORKING (exemples locaux) | Badge retiré | PASS |
-| Profil : mode sombre, mémorisé | WORKING | Rechargement | PASS |
-| Profil : notifications serveur | BLOCKED | Interrupteur désactivé | Désactivé et signalé |
-| Modules MY GIT, MY CLOUD, AI CHAT | NOT IMPLEMENTED (message honnête) | Toast « non relié à un serveur » | PASS |
-| Visuel mobile du ZIP | PARTIAL | Capture mobile vérifiée | Visuel OK, pas encore d'animations GSAP |
-
-
-## 13. Passe complète du design (v8)
-
-Pages refaites dans le système de design commun (mise en page, cartes, pilules, onglets, formulaires, états vides), en conservant leurs identifiants et leurs scripts :
-accueil, services, tarifs, à propos, projets, communauté, contact, carrières, documentation, confidentialité, conditions, API CENTER, MY EDITOR, MY TERMINAL, AI STUDIO, connexion, inscription, vérification du téléphone, tableau de bord, AI CHAT, MY GIT, MY CLOUD, administration.
-
-Corrections pendant la passe :
-- Connexion et inscription sans base : la fausse connexion locale (compte créé dans le navigateur puis redirection) est supprimée. Le formulaire explique que le service n'est pas configuré.
-- MY GIT : champ d'erreur manquant corrigé (la validation du nom plantait).
-- Tableau de bord : les indicateurs affichent « — » au lieu de zéros inventés.
-
-Restent (dépendances externes, documentées section 11) : authentification réelle, envoi SMS, assistant IA, dépôts Git distants, publication MY CLOUD, administration réelle, APK.
-
-Traductions : portugais et allemand couvrent environ 200 textes sur 315. Les nouveaux textes de la passe v8 restent en français.
-Animations : entrée douce des blocs (CSS), désactivée avec prefers-reduced-motion. Les animations GSAP des pages ne sont pas vérifiables sans accès au CDN.
-
-
-## 14. Interfaces complémentaires — livraison
-
-- Hub des modules : `espace.html`.
-- Centre de notifications et préférences : `notifications.html`.
-- Équipes et collaboration : `equipes.html`.
-- Help Center et demandes de support : `aide.html`.
-- Parrainage : `parrainage.html`.
-- XP, badges et défis : `recompenses.html`.
-- Profil public et zone QR : `profil-public.html`.
-- Console Super Admin : `super-admin.html`.
-- Audit et sécurité : `audit-securite.html`.
-- Statut et maintenance : `maintenance.html`.
-- Récupération de mot de passe : `mot-de-passe-oublie.html`.
-- Logo vectoriel principal et logos des modules : `assets/brand/logos/`.
+**Important :** le ZIP contient les corrections de code et la migration, mais il ne peut pas exécuter à ta place les changements sur ton projet Supabase/Cloudflare. Tant que les étapes de déploiement ne sont pas faites, les nouvelles fonctions serveur ne seront pas actives en production.

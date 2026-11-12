@@ -1,15 +1,7 @@
-# Aldetic : livraison complète
+# Aldetic — version corrigée
 
-Ouvrir dans un navigateur, sans serveur :
-- `aldetic-app.html` : application une page (bienvenue, accueil, projets, alertes, profil ; mode sombre).
-- `aldetic-accueil-autonome.html` : page d'accueil seule, CSS et JavaScript intégrés.
-
-Site complet (plusieurs pages) : ouvrir `index.html` avec un petit serveur local (`python3 -m http.server`), car les pages chargent des fichiers dans `assets/`.
-
-Documentation :
-- `AUDIT.md` : statut réel de chaque module, bouton et commande (WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED), avec les tests réalisés.
-- `README.md` : historique des versions.
-- `supabase/schema.sql` : schéma de base, à exécuter sur un projet Supabase (non configuré ici).
-- `android/` : coque Android, non compilée.
-
-Ce qui n'est pas inclus : clés et configuration Supabase, fournisseur SMS, fournisseur IA, moteur Git, SDK Android (voir AUDIT.md, section 11).
+1. Lisez `DEPLOIEMENT-COMPLET.md` : SQL et fonctions Edge doivent être déployés avant les tests.
+2. `AUDIT.md` décrit les fonctions réelles et les limites.
+3. La configuration Supabase existante dans `assets/js/config.js` a été conservée.
+4. Le code téléphone `000000` est une démonstration contrôlée côté serveur, pas un SMS ni une vérification réelle.
+5. N'exposez jamais `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY` ou `RESEND_API_KEY` dans les fichiers du site.

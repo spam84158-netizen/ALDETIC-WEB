@@ -30,22 +30,21 @@ Deno.serve(async (req) => {
     if (!supabaseUrl || !serviceKey) return reply(500, { ok: false, error: "Configuration serveur Supabase incomplète." });
 
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-    const { error: insertError } = await db.from("applications").insert({
-      email,
-      offer_id: null,
-      status: "received",
-    });
-    if (insertError) {
-      console.error("Application insert failed:", insertError.message);
+    const { data: application, error: insertError } = await db.from("applications").insert({
+      email, name, profile, message, offer_id: null, status: "received",
+    }).select("id").single();
+    if (insertError || !application) {
+      console.error("Application insert failed:", insertError?.message);
       return reply(500, { ok: false, error: "Enregistrement de la candidature impossible." });
     }
+    await db.from("audit_logs").insert({ action: "application.received", target_type: "application", target_id: application.id, details: { email, profile } });
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const notifyEmail = Deno.env.get("NOTIFY_EMAIL");
     const fromEmail = Deno.env.get("FROM_EMAIL");
     if (!resendKey || !notifyEmail || !fromEmail) {
       console.error("Resend secrets missing: RESEND_API_KEY, NOTIFY_EMAIL or FROM_EMAIL.");
-      return reply(200, { ok: true, notified: false, message: "Candidature enregistrée, notification e-mail non configurée." });
+      return reply(200, { ok: true, saved: true, application_id: application.id, notified: false, message: "Candidature enregistrée, notification e-mail non configurée." });
     }
 
     const mail = await fetch("https://api.resend.com/emails", {
@@ -63,10 +62,10 @@ Deno.serve(async (req) => {
     if (!mail.ok) {
       const details = await mail.text();
       console.error("Resend error:", mail.status, details.slice(0, 500));
-      return reply(200, { ok: true, notified: false, message: "Candidature enregistrée, mais l'e-mail de notification n'a pas été envoyé." });
+      return reply(200, { ok: true, saved: true, application_id: application.id, notified: false, message: "Candidature enregistrée, mais l'e-mail de notification n'a pas été envoyé." });
     }
 
-    return reply(200, { ok: true, notified: true, message: "Candidature enregistrée et notification envoyée." });
+    return reply(200, { ok: true, saved: true, application_id: application.id, notified: true, message: "Candidature enregistrée et notification envoyée." });
   } catch (error) {
     console.error("notify-application error:", error);
     return reply(400, { ok: false, error: "Requête invalide ou erreur serveur." });
