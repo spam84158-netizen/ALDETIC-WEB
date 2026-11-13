@@ -1,78 +1,274 @@
-/* Aldetic — vérification téléphonique simulée (démo).
-   Un code fictif aléatoire à 6 chiffres est généré après 5 secondes,
-   rempli automatiquement puis validé. Aucun SMS réel n'est envoyé. */
+/* ALDETIC — Vérification téléphonique par code de démonstration.
+   Délai : 5 secondes. Code aléatoire à 6 chiffres.
+   La confirmation Supabase est effectuée par RPC côté serveur.
+*/
+
 document.addEventListener("aldetic:ready", async () => {
   const db = window.aldeticDb;
-  const country = document.getElementById("country"), phone = document.getElementById("phone");
-  const stepPhone = document.getElementById("step-phone"), stepCode = document.getElementById("step-code");
-  const wait = document.getElementById("wait"), sent = document.getElementById("sent");
-  const codeInput = document.getElementById("code"), cerr = document.getElementById("cerr");
-  let userId = null, busy = false, generatedDemoCode = null;
 
-  window.ALDETIC_COUNTRIES.forEach((c, i) => country.add(new Option(`${c.name} (+${c.dial})`, i)));
-  const ci = window.ALDETIC_COUNTRIES.findIndex(c => c.dial === "225");
-  country.value = String(ci >= 0 ? ci : Math.max(0, window.ALDETIC_COUNTRIES.findIndex(c => c.dial === "33")));
+  const country = document.getElementById("country");
+  const phone = document.getElementById("phone");
+  const stepPhone = document.getElementById("step-phone");
+  const stepCode = document.getElementById("step-code");
+  const wait = document.getElementById("wait");
+  const sent = document.getElementById("sent");
+  const cerr = document.getElementById("cerr");
+  const perr = document.getElementById("perr");
+  const codeInput = document.getElementById("code");
+
+  const submitPhone = stepPhone.querySelector('button[type="submit"]');
+  const submitCode = stepCode.querySelector('button[type="submit"]');
+
+  let userId = null;
+  let currentCode = null;
+  let processing = false;
+
+  const isEnglish = () => document.documentElement.lang === "en";
+
+  const message = (fr, en) => isEnglish() ? en : fr;
+
+  const delay = ms =>
+    new Promise(resolve => setTimeout(resolve, ms));
+
+  const randomCode = () => {
+    const values = new Uint32Array(1);
+
+    if (window.crypto && window.crypto.getRandomValues) {
+      window.crypto.getRandomValues(values);
+      return String(100000 + (values[0] % 900000));
+    }
+
+    return String(Math.floor(100000 + Math.random() * 900000));
+  };
+
+  window.ALDETIC_COUNTRIES.forEach((c, i) => {
+    country.add(new Option(`${c.name} (+${c.dial})`, i));
+  });
+
+  country.value = window.ALDETIC_COUNTRIES.findIndex(
+    c => c.dial === "33"
+  );
 
   if (db) {
     const { data, error } = await db.auth.getSession();
-    if (error || !data.session) { location.href = "connexion.html"; return; }
+
+    if (error || !data.session) {
+      location.href = "connexion.html";
+      return;
+    }
+
     userId = data.session.user.id;
-    const { data: profile } = await db.from("profiles").select("phone_verified").eq("id", userId).maybeSingle();
-    if (profile?.phone_verified) { location.href = "tableau-de-bord.html"; return; }
-  } else if (!window.alDemo?.get("account", null)) {
-    location.href = "connexion.html"; return;
+
+    const { data: profile, error: profileError } = await db
+      .from("profiles")
+      .select("phone_verified")
+      .eq("id", userId)
+      .single();
+
+    if (profileError) {
+      perr.textContent = message(
+        "Impossible de récupérer votre profil : " + profileError.message,
+        "Unable to retrieve your profile: " + profileError.message
+      );
+      return;
+    }
+
+    if (profile && profile.phone_verified) {
+      location.href = "tableau-de-bord.html";
+      return;
+    }
+  } else if (!window.alDemo.get("account", null)) {
+    location.href = "connexion.html";
+    return;
   }
 
-  async function confirmDemo() {
-    if (busy) return; busy = true;
-    cerr.textContent = tr("Confirmation simulée en cours…");
+  async function confirmCode(code) {
     if (db) {
-      const { error } = await db.rpc("aldetic_confirm_demo_phone");
+      const { data, error } = await db.rpc(
+        "aldetic_confirm_demo_phone",
+        { p_code: code }
+      );
+
       if (error) {
-        cerr.textContent = tr("La confirmation simulée est prête, mais la fonction SQL doit être installée : ") + error.message;
-        busy = false; return;
+        throw new Error(error.message);
+      }
+
+      if (data !== true) {
+        throw new Error(message(
+          "Le code n'a pas pu être confirmé.",
+          "The code could not be confirmed."
+        ));
       }
     } else {
       const account = window.alDemo.get("account", {});
-      window.alDemo.set("account", { ...account, phone_verified: true });
+
+      if (account.phone !== window.alDemo.get("pending_phone", "")) {
+        throw new Error(message(
+          "Le numéro enregistré ne correspond plus.",
+          "The saved phone number no longer matches."
+        ));
+      }
+
+      if (code !== currentCode) {
+        throw new Error(message(
+          "Code incorrect.",
+          "Incorrect code."
+        ));
+      }
+
+      window.alDemo.set("phone_verified", true);
+      window.alDemo.set("account", {
+        ...account,
+        phone_verified: true
+      });
     }
-    cerr.textContent = tr("Numéro confirmé en mode démonstration. Aucun SMS réel n'a été envoyé.");
-    setTimeout(() => location.replace("tableau-de-bord.html"), 900);
+
+    cerr.textContent = message(
+      "Numéro confirmé avec succès. Redirection…",
+      "Phone number confirmed successfully. Redirecting…"
+    );
+
+    await delay(1200);
+    location.href = "tableau-de-bord.html";
   }
 
-  stepPhone.addEventListener("submit", async e => {
-    e.preventDefault();
-    const c = window.ALDETIC_COUNTRIES[Number(country.value)];
-    const digits = phone.value.replace(/\D/g, "").replace(/^0/, "");
-    const err = document.getElementById("perr");
-    if (!c || !/^\d+$/.test(digits) || digits.length < c.min || digits.length > c.max) {
-      err.textContent = tr("Numéro invalide pour le pays choisi."); return;
+  stepPhone.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (processing) return;
+
+    const selectedCountry = window.ALDETIC_COUNTRIES[country.value];
+
+    if (!selectedCountry) return;
+
+    const digits = phone.value
+      .replace(/\D/g, "")
+      .replace(/^0/, "");
+
+    if (
+      !/^\d+$/.test(digits) ||
+      digits.length < selectedCountry.min ||
+      digits.length > selectedCountry.max
+    ) {
+      perr.textContent = message(
+        `Numéro invalide pour ${selectedCountry.name} : ${selectedCountry.min === selectedCountry.max
+          ? selectedCountry.min
+          : selectedCountry.min + " à " + selectedCountry.max} chiffres attendus.`,
+        `Invalid number for ${selectedCountry.name}: ${selectedCountry.min === selectedCountry.max
+          ? selectedCountry.min
+          : selectedCountry.min + " to " + selectedCountry.max} digits expected.`
+      );
+      return;
     }
-    err.textContent = "";
-    const picked = `+${c.dial}${digits}`;
-    if (db) {
-      const { error } = await db.from("profiles").update({ phone: picked }).eq("id", userId);
-      if (error) { err.textContent = tr("Enregistrement impossible : ") + error.message; return; }
-    } else {
-      window.alDemo.set("account", { ...window.alDemo.get("account", {}), phone: picked });
-    }
-    stepPhone.hidden = true; stepCode.hidden = false; wait.hidden = false;
-    sent.textContent = tr("Numéro enregistré : ") + picked + ". " + tr("Code de démonstration automatique dans 5 secondes.");
-    codeInput.value = ""; codeInput.disabled = true;
-    setTimeout(async () => {
-      // Code de démonstration aléatoire : il n'est ni fixe ni envoyé par SMS.
-      const bytes = new Uint32Array(1);
-      crypto.getRandomValues(bytes);
-      generatedDemoCode = String(bytes[0] % 1000000).padStart(6, "0");
-      codeInput.value = generatedDemoCode;
-      codeInput.disabled = false;
+
+    perr.textContent = "";
+    cerr.textContent = "";
+
+    const picked = `+${selectedCountry.dial}${digits}`;
+
+    processing = true;
+    submitPhone.disabled = true;
+    wait.hidden = false;
+    stepPhone.hidden = true;
+    stepCode.hidden = false;
+
+    sent.textContent = message(
+      "Préparation de votre code de vérification…",
+      "Preparing your verification code…"
+    );
+
+    try {
+      // Attente exacte de 5 secondes avant la génération du code.
+      await delay(5000);
+
+      if (db) {
+        const { data, error } = await db.rpc(
+          "aldetic_generate_demo_phone_code",
+          { p_phone: picked }
+        );
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        currentCode = String(data || "");
+
+        if (!/^\d{6}$/.test(currentCode)) {
+          throw new Error(message(
+            "Le serveur n'a pas généré un code valide.",
+            "The server did not generate a valid code."
+          ));
+        }
+      } else {
+        currentCode = randomCode();
+
+        const account = window.alDemo.get("account", {});
+
+        window.alDemo.set("account", {
+          ...account,
+          phone: picked
+        });
+
+        window.alDemo.set("pending_phone", picked);
+      }
+
+      // Remplissage automatique du champ.
+      codeInput.value = currentCode;
+
       wait.hidden = true;
-      await confirmDemo();
-    }, 5000);
+
+      sent.textContent = message(
+        `Code ${picked}. Confirmation automatique en cours…`,
+        `code generated for ${picked}. Automatic confirmation in progress…`
+      );
+
+      // Confirmation automatique du code généré.
+      await confirmCode(currentCode);
+
+    } catch (error) {
+      wait.hidden = true;
+      cerr.textContent = message(
+        "Erreur de vérification : ",
+        "Verification error: "
+      ) + error.message;
+
+      stepPhone.hidden = false;
+      stepCode.hidden = false;
+      submitPhone.disabled = false;
+      processing = false;
+    }
   });
-  stepCode.addEventListener("submit", async e => {
-    e.preventDefault();
-    if (!generatedDemoCode || codeInput.value !== generatedDemoCode) { cerr.textContent = tr("Code de démonstration incorrect."); return; }
-    await confirmDemo();
+
+  // Possibilité de valider manuellement si nécessaire.
+  stepCode.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (processing) return;
+
+    const enteredCode = codeInput.value.trim();
+
+    if (!/^\d{6}$/.test(enteredCode)) {
+      cerr.textContent = message(
+        "Saisissez un code de 6 chiffres.",
+        "Enter a 6-digit code."
+      );
+      return;
+    }
+
+    processing = true;
+    submitCode.disabled = true;
+    cerr.textContent = "";
+
+    try {
+      await confirmCode(enteredCode);
+    } catch (error) {
+      cerr.textContent = message(
+        "Confirmation impossible : ",
+        "Confirmation failed: "
+      ) + error.message;
+
+      processing = false;
+      submitCode.disabled = false;
+    }
   });
 });
