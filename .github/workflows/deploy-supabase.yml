@@ -1,0 +1,36 @@
+name: Deploy Aldetic Supabase
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Recuperer le projet
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Installer Supabase CLI
+        run: npm install -g supabase@latest
+
+      - name: Verifier les fonctions
+        run: |
+          for fn in ask-ai notify-application contact-message reply-application verify-demo-phone; do
+            test -f "supabase/functions/$fn/index.ts" || exit 1
+          done
+
+      - name: Deployer les cinq fonctions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy ask-ai --project-ref nogdmnojpsdjfaapsrhe
+          supabase functions deploy notify-application --project-ref nogdmnojpsdjfaapsrhe
+          supabase functions deploy contact-message --project-ref nogdmnojpsdjfaapsrhe
+          supabase functions deploy reply-application --project-ref nogdmnojpsdjfaapsrhe
+          supabase functions deploy verify-demo-phone --project-ref nogdmnojpsdjfaapsrhe
