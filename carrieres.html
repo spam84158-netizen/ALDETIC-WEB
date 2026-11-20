@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carrières · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="false"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:26px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/people.svg" alt="" width="150" height="131"><p class="eyebrow">Carrières</p><h1 style="font-size:clamp(34px,5vw,58px)">Travaillez sur des outils utilisés au quotidien.</h1><p class="lead" style="margin-top:18px">Chaque offre précise ses missions, les compétences attendues et les conditions. Suivez votre candidature de la réception à la décision.</p></div></section>
+<section style="padding-top:8px"><div class="wrap">
+<p id="state" class="notice" hidden></p>
+<div class="h-two" style="align-items:start">
+<div><p class="eyebrow">Offres ouvertes</p><div id="offers"></div><p id="no-offers" class="empty" hidden>Aucune offre publiée pour le moment. Envoyez une candidature spontanée avec le formulaire : chaque candidature reçoit une réponse.</p></div>
+<form class="panel" id="apply" novalidate><p class="eyebrow" style="margin-bottom:14px">Candidature</p>
+<p id="need-login" class="notice" hidden>Connectez-vous avec un compte dont le numéro est vérifié pour candidater. <a href="connexion.html">Connexion</a></p>
+<div class="field"><label for="of">Poste</label><select id="of"><option value="">Candidature spontanée</option></select></div>
+<div class="field"><label for="n">Nom complet</label><input id="n" required autocomplete="name"><span class="err" id="en"></span></div>
+<div class="field"><label for="m">E-mail</label><input id="m" type="email" required autocomplete="email"><span class="err" id="em"></span></div>
+<div class="field"><label for="ro">Profil</label><select id="ro"><option>Développeur</option><option>Designer UI/UX</option><option>IA et données</option><option>Cybersécurité (défensive)</option><option>Chef de projet</option><option>Autre</option></select></div>
+<div class="field"><label for="cv">CV ou portfolio</label><input id="cv" type="file" accept=".pdf,.docx" aria-describedby="cvh"><small id="cvh">PDF ou DOCX, 5 Mo maximum.</small><span class="err" id="ec"></span></div>
+<div class="field"><label for="msg">Message</label><textarea id="msg" maxlength="4000"></textarea><span class="err" id="emsg"></span></div>
+<label style="display:flex;gap:10px;align-items:flex-start;font-size:14px;margin-bottom:18px"><input type="checkbox" id="ok" style="width:auto;min-height:0;margin-top:4px"> <span>J'accepte que mes données soient traitées pour examiner ma candidature, selon la politique de confidentialité.</span></label>
+<button class="btn primary" type="submit" id="go" style="width:100%">Envoyer ma candidature</button>
+<p class="notice" id="ap" style="margin-top:16px" hidden role="status"></p></form></div>
+<div id="mine" hidden style="margin-top:34px"><p class="eyebrow">Suivi de mes candidatures</p><div id="mine-list" class="stack-list"></div></div>
+</div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const ST = { received: ["Reçue", ""], in_review: ["En examen", "warn"], info_requested: ["Informations demandées", "warn"], interview: ["Entretien", "warn"], accepted: ["Retenue", "ok"], rejected: ["Non retenue", "err"] };
+  const pill = s => { const m = ST[s] || [s, ""]; return `<span class="pill ${m[1]}">${esc(tr(m[0]))}</span>`; };
+  const ERR = { too_many_open_applications: "Vous avez déjà 3 candidatures en cours.", offer_closed: "Cette offre n'est plus ouverte.", duplicate: "Vous avez déjà candidaté à cette offre.", verify: "Vérifiez d'abord votre numéro de téléphone." };
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  let me = null, offers = [];
+  const list = a => (a && a.length) ? `<ul style="margin:6px 0 0;padding-left:18px">${a.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  if (!db) { say(tr("Le service de comptes n'est pas configuré.")); }
+  else {
+    const { data: o } = await db.from("job_offers").select("id, slug, title, summary, responsibilities, requirements, conditions, benefits").eq("status", "open").order("created_at", { ascending: false });
+    offers = o || [];
+    $("offers").innerHTML = offers.map(x => `<article class="panel" style="margin-bottom:12px"><h3>${esc(x.title)}</h3>${x.summary ? `<p class="muted">${esc(x.summary)}</p>` : ""}${x.responsibilities && x.responsibilities.length ? `<p><b>${esc(tr("Missions"))}</b></p>${list(x.responsibilities)}` : ""}${x.requirements && x.requirements.length ? `<p style="margin-top:10px"><b>${esc(tr("Compétences"))}</b></p>${list(x.requirements)}` : ""}${x.conditions ? `<p style="margin-top:10px"><b>${esc(tr("Conditions"))}</b> ${esc(x.conditions)}</p>` : ""}${x.benefits ? `<p><b>${esc(tr("Avantages"))}</b> ${esc(x.benefits)}</p>` : ""}<button class="btn small" type="button" data-apply="${esc(x.id)}">${esc(tr("Postuler"))}</button></article>`).join("");
+    $("no-offers").hidden = offers.length > 0;
+    offers.forEach(x => $("of").add(new Option(x.title, x.id)));
+    const { data: s } = await db.auth.getSession();
+    me = s && s.session ? s.session.user.id : null;
+    $("need-login").hidden = !!me;
+    if (me) loadMine();
+  }
+  document.addEventListener("click", e => { const b = e.target.closest("[data-apply]"); if (b) { $("of").value = b.dataset.apply; $("apply").scrollIntoView({ behavior: "smooth" }); $("n").focus(); } });
+
+  async function loadMine() {
+    const { data, error } = await db.from("recruitment_applications").select("id, public_ref, status, role_title, offer_id, created_at").order("created_at", { ascending: false });
+    if (error || !data || !data.length) return;
+    $("mine").hidden = false;
+    $("mine-list").innerHTML = data.map(a => `<article class="panel" data-app="${esc(a.id)}"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b class="dt-mono">${esc(a.public_ref)}</b><div class="muted">${esc((offers.find(o => o.id === a.offer_id) || {}).title || a.role_title || tr("Candidature spontanée"))} · ${esc(new Date(a.created_at).toLocaleDateString(document.documentElement.lang))}</div></div>${pill(a.status)}</div><div class="timeline" data-tl="${esc(a.id)}"></div>${a.status === "info_requested" ? `<form class="reply" data-reply="${esc(a.id)}" style="margin-top:10px"><label class="muted" for="r-${esc(a.id)}">${esc(tr("Votre réponse à la demande d'informations"))}</label><textarea id="r-${esc(a.id)}" maxlength="4000" required></textarea><button class="btn small primary" type="submit" style="margin-top:8px">${esc(tr("Envoyer"))}</button> <span class="err"></span></form>` : ""}</article>`).join("");
+    for (const a of data) {
+      const { data: ev } = await db.from("recruitment_events").select("kind, status_to, body, created_at").eq("application_id", a.id).order("created_at", { ascending: true });
+      const tl = document.querySelector(`[data-tl="${a.id}"]`);
+      if (tl) tl.innerHTML = (ev || []).map(x => `<div class="event-row" style="margin-top:8px"><span class="event-dot"></span><div>${x.status_to ? pill(x.status_to) : ""} ${x.body ? `<span>${esc(x.body)}</span>` : ""}<small style="display:block">${esc(new Date(x.created_at).toLocaleString(document.documentElement.lang))}</small></div></div>`).join("");
+    }
+  }
+  $("mine-list").addEventListener("submit", async e => {
+    const f = e.target.closest("[data-reply]"); if (!f) return; e.preventDefault();
+    const body = f.querySelector("textarea").value.trim();
+    const { data: r, error } = await db.rpc("application_reply", { p_id: f.dataset.reply, p_body: body });
+    if (error || !r || !r.ok) { f.querySelector(".err").textContent = tr("Envoi impossible. Réessayez."); return; }
+    toast(tr("Réponse envoyée")); await loadMine();
+  });
+
+  $("apply").addEventListener("submit", async e => {
+    e.preventDefault(); let ok = true;
+    const set = (id, msg) => { $(id).textContent = msg; if (msg) ok = false; };
+    set("en", $("n").value.trim().length < 2 ? tr("Indiquez votre nom.") : "");
+    set("em", /^\S+@\S+\.\S+$/.test($("m").value) ? "" : tr("Adresse e-mail invalide."));
+    set("emsg", $("msg").value.trim().length < 20 ? tr("Décrivez votre profil en 20 caractères minimum.") : "");
+    const file = $("cv").files[0]; set("ec", "");
+    if (file) set("ec", !/\.(pdf|docx)$/i.test(file.name) ? tr("Format non accepté (PDF ou DOCX).") : file.size > 5 * 1024 * 1024 ? tr("Fichier trop lourd (5 Mo maximum).") : "");
+    if (!$("ok").checked) { ok = false; toast(tr("Acceptez le traitement de vos données.")); }
+    if (!ok) return;
+    const ap = $("ap"); ap.hidden = false;
+    if (!db) { ap.textContent = tr("Le service de comptes n'est pas configuré."); return; }
+    if (!me) { ap.textContent = tr("Connectez-vous pour candidater."); return; }
+    $("go").disabled = true; ap.textContent = tr("Envoi en cours…");
+    let cvPath = null;
+    if (file) {
+      cvPath = me + "/" + Date.now() + "-" + file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(-80);
+      const up = await db.storage.from("recruitment-cv").upload(cvPath, file, { contentType: file.type || undefined, upsert: false });
+      if (up.error) { ap.textContent = tr("Le CV n'a pas pu être envoyé. Réessayez."); $("go").disabled = false; return; }
+    }
+    const row = { full_name: $("n").value.trim(), email: $("m").value.trim(), role_title: $("ro").value, message: $("msg").value.trim(), cv_path: cvPath };
+    if ($("of").value) row.offer_id = $("of").value;
+    const { data, error } = await db.from("recruitment_applications").insert(row).select("public_ref").single();
+    $("go").disabled = false;
+    if (error) {
+      const m = String(error.message);
+      if (cvPath) await db.storage.from("recruitment-cv").remove([cvPath]);
+      ap.textContent = tr(m.includes("too_many_open") ? ERR.too_many_open_applications : m.includes("offer_closed") ? ERR.offer_closed : m.includes("duplicate") ? ERR.duplicate : m.includes("row-level") ? ERR.verify : "Envoi impossible. Réessayez.");
+      return;
+    }
+    ap.textContent = tr("Candidature reçue. Votre référence :") + " " + data.public_ref;
+    $("apply").reset();
+    try { fetch(`${window.ALDETIC_CONFIG.SUPABASE_URL}/functions/v1/notify-application`, { method: "POST", headers: { "Content-Type": "application/json", apikey: window.ALDETIC_CONFIG.SUPABASE_ANON_KEY }, body: JSON.stringify({ name: row.full_name, email: row.email, profile: row.role_title, message: row.message }) }).catch(() => {}); } catch (_) {}
+    loadMine();
+  });
+});
+</script>
+
+
+
+</body></html>

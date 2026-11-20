@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Assistance · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:22px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/chat.svg" alt="" width="150" height="131"><p class="eyebrow">Assistance</p><h1 style="font-size:clamp(32px,4.8vw,54px)">Une demande ? Suivez-la jusqu'à la réponse.</h1><p class="lead" style="margin-top:16px">Décrivez votre problème. Chaque demande a un historique complet et une notification à chaque réponse.</p></div></section>
+<section style="padding-top:8px"><div class="wrap">
+<p id="state" class="notice" hidden></p>
+<div class="h-two" style="align-items:start">
+<form class="panel" id="t-form" novalidate><h3>Nouvelle demande</h3>
+<div class="field"><label for="t-cat">Catégorie</label><select id="t-cat"></select></div>
+<div class="field"><label for="t-sub">Objet</label><input id="t-sub" maxlength="120" autocomplete="off"></div>
+<div class="field"><label for="t-desc">Description</label><textarea id="t-desc" maxlength="4000"></textarea></div>
+<button class="btn primary" type="submit" id="t-go">Envoyer</button> <p class="err" id="t-err" role="alert"></p><p class="muted" id="t-ok" role="status"></p></form>
+<div><p class="eyebrow">Mes demandes</p><div id="t-list" class="stack-list"></div><p id="t-empty" class="empty" hidden>Aucune demande.</p></div></div>
+<div id="thread" class="panel" hidden style="margin-top:18px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h3 id="th-title"></h3><span id="th-status"></span></div><p class="muted" id="th-meta"></p><p id="th-desc" style="white-space:pre-wrap"></p>
+<div id="th-msgs"></div>
+<form id="th-form" style="margin-top:12px"><div class="field"><label for="th-body">Votre message</label><textarea id="th-body" maxlength="4000"></textarea></div><button class="btn primary" type="submit" id="th-go">Répondre</button> <button class="btn ghost" type="button" id="th-close">Clore la demande</button> <p class="err" id="th-err" role="alert"></p></form></div>
+</div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  const ST = { open: ["Ouvert", "warn"], in_progress: ["En cours", "warn"], waiting_user: ["En attente de votre réponse", "warn"], resolved: ["Résolu", "ok"], closed: ["Clos", ""] };
+  const CAT = { general: "Général", account: "Compte", payment: "Paiement", project: "Projet", ai: "IA", recruitment: "Recrutement", other: "Autre" };
+  const PRI = { low: "Basse", normal: "Normale", high: "Haute", urgent: "Urgente" };
+  const pill = s => { const m = ST[s] || [s, ""]; return `<span class="pill ${m[1]}">${esc(tr(m[0]))}</span>`; };
+  const dt = d => new Date(d).toLocaleString(document.documentElement.lang);
+  const ERR = { too_many_open_tickets: "Vous avez déjà 5 demandes ouvertes. Clôturez-en une avant d'en créer une autre.", ticket_closed: "Cette demande est close.", length: "Objet : 3 à 120 caractères. Description : 10 caractères minimum." };
+  Object.entries(CAT).forEach(([k, v]) => $("t-cat").add(new Option(tr(v), k)));
+  if (!db) { say(tr("Le service de comptes n'est pas configuré.")); return; }
+  const { data: s } = await db.auth.getSession(); if (!s || !s.session) { location.href = "connexion.html"; return; }
+  const me = s.session.user.id; let tickets = [], cur = null;
+  async function loadList() {
+    const { data, error } = await db.from("support_tickets").select("id, subject, description, category, status, priority, created_at, updated_at").order("updated_at", { ascending: false });
+    if (error) { say(tr("Impossible de charger vos demandes.")); return; } say(""); tickets = data || [];
+    $("t-list").innerHTML = tickets.map(t => `<article class="ocard" data-open="${esc(t.id)}" style="cursor:pointer"><div class="oc-ico">#</div><div><div class="oc-t">${esc(t.subject)}</div><div class="oc-m">${esc(tr(CAT[t.category] || t.category))} · ${esc(dt(t.updated_at))}</div></div>${pill(t.status)}</article>`).join("");
+    $("t-empty").hidden = tickets.length > 0;
+  }
+  async function openTicket(id) {
+    const t = tickets.find(x => x.id === id); if (!t) return; cur = t;
+    $("thread").hidden = false; $("th-title").textContent = t.subject; $("th-status").innerHTML = pill(t.status); $("th-meta").textContent = tr(CAT[t.category] || t.category) + " · " + dt(t.created_at); $("th-desc").textContent = t.description; $("th-err").textContent = "";
+    const { data } = await db.from("support_messages").select("id, sender_id, body, created_at").eq("ticket_id", id).order("created_at", { ascending: true });
+    $("th-msgs").innerHTML = (data || []).map(m => `<div class="event-row" style="margin-top:10px"><span class="event-dot"></span><div><b>${esc(m.sender_id === me ? tr("Vous") : tr("Support"))}</b> <small>${esc(dt(m.created_at))}</small><p style="white-space:pre-wrap;margin:4px 0 0">${esc(m.body)}</p></div></div>`).join("");
+    const closed = t.status === "closed"; $("th-form").hidden = closed; $("thread").scrollIntoView({ behavior: "smooth" });
+  }
+  $("t-list").addEventListener("click", e => { const a = e.target.closest("[data-open]"); if (a) openTicket(a.dataset.open); });
+  $("t-form").addEventListener("submit", async e => {
+    e.preventDefault(); $("t-err").textContent = ""; $("t-ok").textContent = "";
+    const subject = $("t-sub").value.trim(), description = $("t-desc").value.trim();
+    if (subject.length < 3 || description.length < 10) { $("t-err").textContent = tr(ERR.length); return; }
+    $("t-go").disabled = true;
+    const { data, error } = await db.from("support_tickets").insert({ category: $("t-cat").value, subject, description }).select("id").single();
+    $("t-go").disabled = false;
+    if (error) { $("t-err").textContent = tr(String(error.message).includes("too_many_open") ? ERR.too_many_open_tickets : "Envoi impossible. Réessayez."); return; }
+    $("t-form").reset(); $("t-ok").textContent = tr("Demande envoyée. Référence :") + " " + String(data.id).slice(0, 8); await loadList(); openTicket(data.id);
+  });
+  $("th-form").addEventListener("submit", async e => {
+    e.preventDefault(); const body = $("th-body").value.trim(); if (!body || !cur) return; $("th-err").textContent = ""; $("th-go").disabled = true;
+    const { error } = await db.from("support_messages").insert({ ticket_id: cur.id, body });
+    $("th-go").disabled = false;
+    if (error) { $("th-err").textContent = tr(String(error.message).includes("ticket_closed") ? ERR.ticket_closed : "Envoi impossible. Réessayez."); return; }
+    $("th-body").value = ""; const id = cur.id; await loadList(); openTicket(id);
+  });
+  $("th-close").addEventListener("click", async () => {
+    if (!cur || !confirm(tr("Clore cette demande ?"))) return;
+    const { error } = await db.from("support_tickets").update({ status: "closed" }).eq("id", cur.id);
+    if (error) { $("th-err").textContent = tr("Action impossible."); return; }
+    const id = cur.id; await loadList(); openTicket(id);
+  });
+  await loadList();
+  if (location.hash.length > 1) openTicket(location.hash.slice(1));
+});
+</script>
+
+
+
+</body></html>

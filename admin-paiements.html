@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paiements (administration) · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:20px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/wallet.svg" alt="" width="150" height="131"><p class="eyebrow">Administration</p><h1 style="font-size:clamp(32px,4.4vw,50px)">Paiements</h1><p class="lead" style="margin-top:14px">Dépôts, retraits, réglages des moyens et journal financier. Un montant n'est crédité ou marqué payé qu'après vérification réelle.</p></div></section>
+<section style="padding-top:8px"><div class="wrap">
+<p id="state" class="notice warn" hidden></p>
+<div id="panel" hidden>
+<div class="chips" role="group" aria-label="Section" style="margin-bottom:14px"><button class="chip" data-sec="dep" type="button" aria-pressed="true">Dépôts</button><button class="chip" data-sec="wd" type="button" aria-pressed="false">Retraits</button><button class="chip" data-sec="set" type="button" aria-pressed="false">Réglages</button><button class="chip" data-sec="aud" type="button" aria-pressed="false">Journal</button></div>
+<p id="msg" class="notice" role="status" hidden></p>
+<div id="v-dep"><div class="panel"><div id="t-dep"></div></div>
+<form id="dep-confirm" class="panel" hidden style="margin-top:14px"><h3>Confirmer un virement reçu</h3><p class="muted" id="dc-ref"></p>
+<div class="field"><label for="dc-bank">Référence du virement sur le relevé bancaire</label><input id="dc-bank" autocomplete="off"></div>
+<div class="field"><label for="dc-amount">Montant reçu (FCFA)</label><input id="dc-amount" inputmode="numeric" autocomplete="off"></div>
+<button class="btn primary" type="submit">Créditer le portefeuille</button> <button class="btn ghost" type="button" id="dc-cancel">Annuler</button><p class="err" id="dc-err" role="alert"></p></form>
+<div id="dep-detail" class="panel" hidden style="margin-top:14px"><h3>Réponse du prestataire</h3><pre id="dep-json" style="white-space:pre-wrap;overflow:auto"></pre></div></div>
+<div id="v-wd" hidden><div class="panel"><div id="t-wd"></div></div>
+<form id="wd-act" class="panel" hidden style="margin-top:14px"><h3 id="wa-title"></h3><p class="muted" id="wa-dest"></p>
+<div class="field"><label for="wa-input" id="wa-label"></label><input id="wa-input" autocomplete="off"></div><div id="wa-btns" style="display:flex;gap:8px;flex-wrap:wrap"></div><p class="err" id="wa-err" role="alert"></p></form></div>
+<div id="v-set" hidden><form class="panel" id="set-form" novalidate><h3>Moyens de paiement</h3><div id="s-methods"></div>
+<div class="field"><label for="s-pct">Frais de retrait (%)</label><input id="s-pct" inputmode="decimal"></div><div class="field"><label for="s-fmin">Frais minimum (FCFA)</label><input id="s-fmin" inputmode="numeric"></div>
+<div class="field"><label for="s-dmin">Dépôt minimum (FCFA)</label><input id="s-dmin" inputmode="numeric"></div><div class="field"><label for="s-wmin">Retrait minimum (FCFA)</label><input id="s-wmin" inputmode="numeric"></div>
+<h3 style="margin-top:14px">Consignes du virement bancaire</h3><div class="field"><label for="b-bank">Banque</label><input id="b-bank"></div><div class="field"><label for="b-holder">Titulaire</label><input id="b-holder"></div><div class="field"><label for="b-iban">IBAN</label><input id="b-iban"></div><div class="field"><label for="b-bic">BIC</label><input id="b-bic"></div>
+<button class="btn primary" type="submit">Enregistrer les réglages</button><p class="muted" id="set-msg" role="status"></p><p class="muted" style="margin-top:8px">Les clés secrets (prestataire, webhooks) ne se saisissent jamais ici : elles sont posées côté serveur.</p></form></div>
+<div id="v-aud" hidden><div class="panel"><div id="t-aud"></div></div></div>
+</div></div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  const note = t => { $("msg").textContent = t; $("msg").hidden = !t; };
+  const METHODS = { orange_money: "Orange Money", mtn_momo: "MTN Mobile Money", moov_money: "Moov Money", wave: "Wave", card: "Visa / Mastercard", bank_transfer: "Virement bancaire" };
+  const ST = { pending: ["En attente", "warn"], confirmed: ["Confirmé", "ok"], rejected: ["Refusé", "err"], failed: ["Échoué", "err"], refunded: ["Remboursé", "warn"], requested: ["Demandé", "warn"], approved: ["Approuvé", "warn"], paid: ["Payé", "ok"] };
+  const ERR = { forbidden: "Action réservée aux administrateurs.", invalid_transition: "Transition non autorisée pour l'état actuel.", reason_required: "Un motif est obligatoire.", provider_ref_required: "La référence réelle du paiement est obligatoire.", bank_reference_required: "La référence du virement est obligatoire.", invalid_amount: "Montant invalide.", amount_or_currency_mismatch: "Le montant reçu ne correspond pas au dépôt : crédit refusé.", duplicate_provider_ref: "Cette référence a déjà été utilisée.", provider_not_configured: "Le prestataire n'est pas connecté.", provider_error: "Le prestataire a refusé la demande.", auto_payout_needs_mobile_destination: "Le paiement automatique ne s'applique qu'aux comptes mobile money.", not_pending: "Ce dépôt n'est plus en attente." };
+  const money = n => new Intl.NumberFormat(document.documentElement.lang, { style: "currency", currency: "XOF", maximumFractionDigits: 0 }).format(n || 0);
+  const pill = st => { const m = ST[st] || [st, ""]; return `<span class="pill ${m[1]}">${esc(tr(m[0]))}</span>`; };
+  const dt = d => new Date(d).toLocaleString(document.documentElement.lang);
+  if (!db) { say("Espace d'administration indisponible pour le moment."); return; }
+  const { data: s } = await db.auth.getSession();
+  if (!s || !s.session) { location.href = "connexion.html"; return; }
+  const { data: isAdmin } = await db.rpc("aldetic_is_admin");
+  if (isAdmin !== true) { say(tr("Accès refusé. Ce compte n'a pas le rôle nécessaire.")); return; }
+  $("panel").hidden = false;
+  let deps = [], wds = [], cfg = {}, selDep = null, selWd = null;
+  const call = async body => { const { data, error } = await db.functions.invoke("wallet-admin", { body }); if (!error) return data || {}; let p = {}; try { p = await error.context.json(); } catch (_) {} const e = new Error(p.error || "network"); e.code = p.error || "network"; throw e; };
+  const explain = c => tr(ERR[c] || "Action refusée.");
+  const destText = w => w.destination && w.destination.iban ? `${w.destination.iban} · ${w.destination.holder || ""}` : (w.destination && w.destination.phone) || "";
+  const tDep = alTable($("t-dep"), { pageSize: 10, search: ["internal_ref", "provider_ref", "user_id"], empty: tr("Aucun dépôt."), columns: [
+    { key: "internal_ref", label: "Référence", mono: true, sort: true, render: r => `${esc(r.internal_ref)}<span class="dt-sub">${esc(dt(r.created_at))}</span>` },
+    { key: "user_id", label: "Membre", mono: true, render: r => esc(String(r.user_id).slice(0, 8)) },
+    { key: "method", label: "Moyen", render: r => `${esc(tr(METHODS[r.method] || r.method))}<span class="dt-sub">${esc(r.provider)}</span>` },
+    { key: "amount_minor", label: "Montant", sort: true, align: "right", render: r => esc(money(r.amount_minor)) },
+    { key: "status", label: "Statut", sort: true, render: r => pill(r.status) + (r.reject_reason ? `<span class="dt-sub">${esc(r.reject_reason)}</span>` : "") },
+    { key: "provider_ref", label: "Réf. prestataire", mono: true, render: r => esc(r.provider_ref || "—") },
+    { key: "id", label: "", align: "right", render: r => (r.status === "pending" && r.method === "bank_transfer" ? `<button class="btn small primary" data-confirm="${esc(r.id)}" type="button">${esc(tr("Confirmer"))}</button> ` : "") + `<button class="btn small ghost" data-detail="${esc(r.id)}" type="button">${esc(tr("Détails"))}</button>` }] });
+  const tWd = alTable($("t-wd"), { pageSize: 10, search: ["id", "user_id"], empty: tr("Aucun retrait."), columns: [
+    { key: "created_at", label: "Date", sort: true, render: r => esc(dt(r.created_at)) },
+    { key: "user_id", label: "Membre", mono: true, render: r => esc(String(r.user_id).slice(0, 8)) },
+    { key: "method", label: "Moyen", render: r => `${esc(tr(METHODS[r.method] || r.method))}<span class="dt-sub">${esc(destText(r))}</span>` },
+    { key: "amount_minor", label: "Montant", sort: true, align: "right", render: r => `${esc(money(r.amount_minor))}<span class="dt-sub">${esc(tr("Frais"))} ${esc(money(r.fee_minor))} · ${esc(tr("Net"))} ${esc(money(r.amount_minor - r.fee_minor))}</span>` },
+    { key: "status", label: "Statut", sort: true, render: r => pill(r.status) + (r.decision_reason ? `<span class="dt-sub">${esc(r.decision_reason)}</span>` : "") },
+    { key: "id", label: "", align: "right", render: r => ["requested", "approved"].includes(r.status) ? `<button class="btn small primary" data-wd="${esc(r.id)}" type="button">${esc(tr("Traiter"))}</button>` : "" }] });
+  const tAud = alTable($("t-aud"), { pageSize: 15, empty: tr("Aucun événement."), columns: [
+    { key: "at", label: "Date", sort: true, render: r => esc(dt(r.at)) }, { key: "action", label: "Action", sort: true, render: r => esc(r.action) },
+    { key: "target_type", label: "Objet", render: r => esc(r.target_type) }, { key: "actor", label: "Acteur", mono: true, render: r => esc(r.actor ? String(r.actor).slice(0, 8) : "système") },
+    { key: "details", label: "Détails", mono: true, render: r => esc(JSON.stringify(r.details || {})) }] });
+  async function load() {
+    const [d, w, a, st] = await Promise.all([
+      db.from("deposits").select("id, user_id, provider, method, amount_minor, currency, internal_ref, provider_ref, status, provider_response, reject_reason, created_at").order("created_at", { ascending: false }).limit(300),
+      db.from("withdrawals").select("id, user_id, method, destination, amount_minor, fee_minor, status, decision_reason, created_at").order("created_at", { ascending: false }).limit(300),
+      db.from("finance_audit").select("id, actor, action, target_type, details, at").order("at", { ascending: false }).limit(300),
+      db.from("platform_settings").select("key, value")]);
+    if (d.error || w.error) { say(tr("Impossible de charger les données financières.")); return; }
+    say(""); deps = d.data || []; wds = w.data || []; tDep.setRows(deps); tWd.setRows(wds); tAud.setRows(a.data || []);
+    cfg = Object.fromEntries((st.data || []).map(r => [r.key, r.value])); drawSettings();
+  }
+  function drawSettings() {
+    const m = cfg.payment_methods || {};
+    $("s-methods").innerHTML = Object.keys(METHODS).map(k => `<label style="display:flex;gap:10px;align-items:center;margin:6px 0"><input type="checkbox" data-m="${k}" style="width:auto;min-height:0" ${m[k] === true ? "checked" : ""}> <span>${esc(tr(METHODS[k]))}</span></label>`).join("");
+    const f = cfg.withdraw_fee || { percent: 0, min: 0 }, b = cfg.bank_instructions || {};
+    $("s-pct").value = f.percent; $("s-fmin").value = f.min; $("s-dmin").value = cfg.deposit_min ?? ""; $("s-wmin").value = cfg.withdraw_min ?? "";
+    $("b-bank").value = b.Banque || ""; $("b-holder").value = b.Titulaire || ""; $("b-iban").value = b.IBAN || ""; $("b-bic").value = b.BIC || "";
+  }
+  document.querySelectorAll("[data-sec]").forEach(c => c.addEventListener("click", () => { document.querySelectorAll("[data-sec]").forEach(x => x.setAttribute("aria-pressed", String(x === c))); ["dep", "wd", "set", "aud"].forEach(k => { $("v-" + k).hidden = k !== c.dataset.sec; }); }));
+  $("t-dep").addEventListener("click", e => {
+    const c = e.target.closest("[data-confirm]"), d = e.target.closest("[data-detail]");
+    if (c) { selDep = deps.find(x => x.id === c.dataset.confirm); $("dep-confirm").hidden = false; $("dc-ref").textContent = selDep.internal_ref + " · " + money(selDep.amount_minor); $("dc-bank").value = ""; $("dc-amount").value = ""; $("dc-err").textContent = ""; $("dc-bank").focus(); }
+    if (d) { const x = deps.find(r => r.id === d.dataset.detail); $("dep-detail").hidden = false; $("dep-json").textContent = JSON.stringify(x.provider_response || { info: "Aucune réponse du prestataire enregistrée." }, null, 2); }
+  });
+  $("dc-cancel").addEventListener("click", () => { $("dep-confirm").hidden = true; });
+  $("dep-confirm").addEventListener("submit", async e => {
+    e.preventDefault(); $("dc-err").textContent = ""; const amount = parseInt($("dc-amount").value.replace(/\s/g, ""), 10);
+    if (!(amount > 0)) { $("dc-err").textContent = explain("invalid_amount"); return; }
+    try { await call({ action: "confirm_bank_deposit", internal_ref: selDep.internal_ref, bank_reference: $("dc-bank").value.trim(), amount, currency: selDep.currency }); $("dep-confirm").hidden = true; note(tr("Dépôt crédité.")); await load(); }
+    catch (er) { $("dc-err").textContent = explain(er.code); }
+  });
+  $("t-wd").addEventListener("click", e => {
+    const b = e.target.closest("[data-wd]"); if (!b) return; selWd = wds.find(x => x.id === b.dataset.wd);
+    $("wd-act").hidden = false; $("wa-err").textContent = ""; $("wa-input").value = "";
+    $("wa-title").textContent = money(selWd.amount_minor) + " · " + tr(METHODS[selWd.method] || selWd.method); $("wa-dest").textContent = destText(selWd) + " · " + tr("Net") + " " + money(selWd.amount_minor - selWd.fee_minor);
+    $("wa-label").textContent = selWd.status === "requested" ? tr("Motif (obligatoire pour un refus)") : tr("Référence réelle du paiement (obligatoire pour « payé manuellement »)");
+    $("wa-btns").innerHTML = selWd.status === "requested"
+      ? `<button class="btn primary" data-do="approve_withdrawal" type="button">${esc(tr("Approuver"))}</button><button class="btn ghost" data-do="reject_withdrawal" type="button">${esc(tr("Refuser"))}</button>`
+      : `<button class="btn primary" data-do="pay_auto" type="button">${esc(tr("Payer via le prestataire"))}</button><button class="btn ghost" data-do="pay_manual" type="button">${esc(tr("Marquer payé manuellement"))}</button><button class="btn ghost" data-do="reject_withdrawal" type="button">${esc(tr("Refuser"))}</button>`;
+  });
+  $("wa-btns").addEventListener("click", async e => {
+    const b = e.target.closest("[data-do]"); if (!b || !selWd) return; $("wa-err").textContent = ""; const v = $("wa-input").value.trim(), act = b.dataset.do;
+    const body = act === "pay_auto" ? { action: "pay_withdrawal", id: selWd.id, mode: "auto" } : act === "pay_manual" ? { action: "pay_withdrawal", id: selWd.id, mode: "manual", provider_ref: v } : act === "reject_withdrawal" ? { action: act, id: selWd.id, reason: v } : { action: act, id: selWd.id };
+    if (act === "reject_withdrawal" && !confirm(tr("Confirmer le refus ? Les fonds réservés seront rendus au membre."))) return;
+    try { const r = await call(body); $("wd-act").hidden = true; note(r.pending_confirmation ? tr("Transfert lancé. Le retrait passera à « payé » dès confirmation du prestataire.") : tr("Action enregistrée.")); await load(); }
+    catch (er) { $("wa-err").textContent = explain(er.code); }
+  });
+  const num = (id, def) => { const v = $(id).value.trim().replace(",", "."); return v === "" ? def : Number(v); };
+  $("set-form").addEventListener("submit", async e => {
+    e.preventDefault(); $("set-msg").textContent = "";
+    const methods = {}; document.querySelectorAll("[data-m]").forEach(c => { methods[c.dataset.m] = c.checked; });
+    const pct = num("s-pct", 0), fmin = num("s-fmin", 0), dmin = num("s-dmin", 0), wmin = num("s-wmin", 0);
+    if ([pct, fmin, dmin, wmin].some(x => !Number.isFinite(x) || x < 0) || pct > 50) { $("set-msg").textContent = tr("Valeurs invalides."); return; }
+    const bank = {}; [["Banque", "b-bank"], ["Titulaire", "b-holder"], ["IBAN", "b-iban"], ["BIC", "b-bic"]].forEach(([k, id]) => { if ($(id).value.trim()) bank[k] = $(id).value.trim(); });
+    const rows = [["payment_methods", methods], ["withdraw_fee", { percent: pct, min: Math.floor(fmin) }], ["deposit_min", Math.floor(dmin)], ["withdraw_min", Math.floor(wmin)], ["bank_instructions", bank]];
+    for (const [key, value] of rows) { const { error } = await db.from("platform_settings").update({ value, updated_at: new Date().toISOString() }).eq("key", key); if (error) { $("set-msg").textContent = tr("Enregistrement refusé."); return; } }
+    $("set-msg").textContent = tr("Réglages enregistrés."); await load();
+  });
+  await load();
+});
+</script>
+
+
+
+</body></html>

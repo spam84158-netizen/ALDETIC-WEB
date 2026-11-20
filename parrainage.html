@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parrainage · Aldetic Frontiers</title><meta name="description" content="Invitez de nouveaux membres et suivez les récompenses liées aux invitations validées."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="false"><div id="site-header"></div><main>
+<section class="h-hero" style="padding-bottom:30px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/link.svg" alt="" width="150" height="131" loading="lazy"><div class="module-heading"><img src="assets/brand/logos/parrainage.svg" alt="Logo Parrainage" width="64" height="64"><div><p class="eyebrow">Programme communautaire</p><h1 style="font-size:clamp(34px,5vw,58px)">Grandissez avec votre communauté.</h1></div></div><p class="lead" style="margin-top:18px">Invitez de nouveaux membres et suivez les récompenses liées aux invitations validées.</p></div></section>
+<section style="padding-top:12px"><div class="wrap">
+<p id="rf-note" class="notice" hidden></p>
+<div class="h-stats">
+ <div class="panel"><p class="h-stat-l muted">Parrainages validés disponibles</p><p class="h-stat-v" id="st-available">—</p></div>
+ <div class="panel"><p class="h-stat-l muted">En attente de vérification</p><p class="h-stat-v" id="st-pending">—</p></div>
+ <div class="panel"><p class="h-stat-l muted">Utilisés</p><p class="h-stat-v" id="st-consumed">—</p></div>
+</div>
+<div class="panel" style="margin-top:14px"><p class="h-stat-l muted">Progression vers une utilisation</p><p id="st-progress" class="h-stat-v">—</p><div style="height:8px;border-radius:99px;background:rgba(127,127,127,.25);overflow:hidden;margin-top:8px"><div id="st-bar" style="height:100%;width:0;background:var(--accent,#2f6bff)"></div></div></div>
+<div class="h-two" style="align-items:start;margin-top:14px"><div class="panel"><h3>Votre lien de parrainage</h3>
+ <div class="field"><label for="ref-link">Lien personnel</label><input id="ref-link" readonly value=""></div>
+ <button class="btn ghost" type="button" id="ref-copy" disabled>Copier mon lien</button></div>
+ <div class="panel"><h3>Comment ça fonctionne</h3><ol class="steps"><li>Partagez votre lien personnel.</li><li>Votre invité crée son compte avec ce lien.</li><li>Il compte uniquement lorsqu'il a vérifié son numéro de téléphone.</li><li>Chaque lot de parrainages validés peut être utilisé une seule fois.</li></ol></div></div>
+<div class="panel" style="margin-top:18px"><h3>Historique des invitations</h3><div id="ref-hist"></div></div></div></section>
+<script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id), note = $("rf-note");
+  const say = h => { note.innerHTML = h; note.hidden = false; };
+  if (!db) { say(tr("Le service de comptes n'est pas configuré.")); $("ref-hist").innerHTML = ""; return; }
+  const { data: sess } = await db.auth.getSession();
+  if (!sess || !sess.session) { say(tr("Connectez-vous pour obtenir votre lien de parrainage.") + ' <a href="connexion.html">' + tr("Se connecter") + "</a>"); $("ref-hist").innerHTML = ""; return; }
+  const me = sess.session.user.id;
+  const { data: code, error: ce } = await db.rpc("referral_code_ensure");
+  if (ce || !code) { say(tr("Impossible de créer votre lien pour le moment.")); } else {
+    const link = new URL("inscription.html?ref=" + encodeURIComponent(code), location.href).href;
+    $("ref-link").value = link; $("ref-copy").disabled = false;
+    $("ref-copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(link); toast(tr("Lien copié")); } catch (e) { $("ref-link").select(); toast(tr("Copie impossible : sélectionnez le texte")); } });
+  }
+  const { data: pr } = await db.from("referral_progress").select("available, pending, consumed, required").eq("user_id", me).maybeSingle();
+  const required = (pr && pr.required) || 8, available = (pr && +pr.available) || 0;
+  $("st-available").textContent = available; $("st-pending").textContent = (pr && pr.pending) || 0; $("st-consumed").textContent = (pr && pr.consumed) || 0;
+  $("st-progress").textContent = Math.min(available, required) + " / " + required;
+  $("st-bar").style.width = Math.min(100, Math.round(100 * available / required)) + "%";
+  const h = await db.from("referrals").select("status, created_at, qualified_at").eq("referrer_id", me).order("created_at", { ascending: false }).limit(50);
+  const label = { pending: tr("En attente de vérification"), qualified: tr("Validé"), rewarded: tr("Utilisé"), rejected: tr("Rejeté") };
+  alTable($("ref-hist"), { pageSize: 10, empty: tr("Aucune invitation pour le moment."), columns: [
+    { key: "status", label: "Statut", sort: true, render: r => `<span class="tag">${esc(label[r.status] || r.status)}</span>` },
+    { key: "created_at", label: "Invité le", sort: true, render: r => esc(new Date(r.created_at).toLocaleDateString(document.documentElement.lang)) },
+    { key: "qualified_at", label: "Validé le", sort: true, align: "right", render: r => r.qualified_at ? esc(new Date(r.qualified_at).toLocaleDateString(document.documentElement.lang)) : "—" }] }).setRows(h.data || []);
+});
+</script>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script></body></html>

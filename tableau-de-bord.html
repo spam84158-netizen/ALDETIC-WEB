@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tableau de bord · Aldetic Frontiers</title>
+<meta name="description" content="Aldetic Frontiers Ltd : Technology Beyond Limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true">
+<div id="site-header"></div>
+<main>
+<section style="padding-top:40px;border:0">
+  <div class="wrap">
+    <p class="eyebrow">Tableau de bord</p>
+    <h1 style="font-size:clamp(36px,4.6vw,54px)">Bienvenue.</h1>
+    <p id="dbnote" class="notice" hidden style="margin-top:20px">Les données de votre compte apparaîtront ici dès leur enregistrement.</p>
+    <div class="h-stats">
+      <div class="panel"><p class="muted h-stat-l">Formule</p><p class="h-stat-v">Gratuite</p></div>
+      <div class="panel"><p class="muted h-stat-l">Projets</p><p class="h-stat-v">—</p></div>
+      <div class="panel"><p class="muted h-stat-l">Dépôts</p><p class="h-stat-v">—</p></div>
+      <div class="panel"><p class="muted h-stat-l">Publications</p><p class="h-stat-v">—</p></div>
+    </div>
+    <div class="h-two" style="gap:20px">
+      <div class="panel"><h3>Quotas</h3><p class="muted" style="font-size:15px;margin:8px 0 0">Les barres d'utilisation apparaîtront une fois les limites confirmées.</p></div>
+      <div class="panel"><h3>Activité récente</h3><div class="empty" style="margin-top:12px;padding:28px">Aucune activité pour le moment.</div></div>
+    </div>
+    <div class="h-actions" style="margin-top:26px"><a class="btn primary" href="espace.html">Ouvrir tous les espaces</a><a class="btn ghost" href="notifications.html">Centre de notifications</a></div>
+    <div class="h-list card-list" style="margin-top:32px">
+      <a class="h-row" href="git.html"><span class="h-row-meta"><strong>MY GIT</strong><small>Dépôts de vos projets</small></span></a>
+      <a class="h-row" href="cloud.html"><span class="h-row-meta"><strong>MY CLOUD</strong><small>Publication de vos sites</small></span></a>
+      <a class="h-row" href="chat.html"><span class="h-row-meta"><strong>AI CHAT</strong><small>Assistant</small></span></a>
+      <a class="h-row" href="api.html"><span class="h-row-meta"><strong>API CENTER</strong><small>Clés et documentation</small></span></a>
+      <a class="h-row" href="equipes.html"><span class="h-row-meta"><strong>Équipes & collaboration</strong><small>Espaces de travail partagés</small></span></a>
+      <a class="h-row" href="parrainage.html"><span class="h-row-meta"><strong>Parrainage</strong><small>Invitations et suivi</small></span></a>
+      <a class="h-row" href="recompenses.html"><span class="h-row-meta"><strong>XP & récompenses</strong><small>Badges et progression</small></span></a>
+    </div>
+  </div>
+</section>
+</main>
+<script>
+document.addEventListener("aldetic:ready", () => { if (!window.aldeticDb) document.getElementById("dbnote").hidden = false; });
+</script>
+<div id="site-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script>
+<script src="assets/js/i18n-es.js"></script>
+<script src="assets/js/i18n-pt.js"></script>
+<script src="assets/js/i18n-ar.js"></script>
+<script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/motion.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/ask-ai.js"></script>
+</body>
+</html>

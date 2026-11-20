@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maquette mobile · Aldetic</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/mobile.css">
+<script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body>
+<header class="m-intro">
+  <p class="m-kicker">Aldetic · maquette visuelle</p>
+  <h1>Écrans mobiles</h1>
+  <p>Visuel seulement : aucune action n'est branchée. Clair par défaut, sombre en option.</p>
+  <button type="button" class="m-toggle" id="m-theme" aria-pressed="false">Passer en sombre</button>
+</header>
+
+<main class="m-stage">
+
+  <!-- Écran 1 : accueil -->
+  <figure class="m-device">
+    <div class="m-screen">
+      <div class="m-top"><span class="m-logo"><i></i>Aldetic</span><span class="m-avatar">AF</span></div>
+      <div class="m-hero">
+        <p class="m-hero-kicker">Bonjour</p>
+        <h2>Que voulez-vous construire ?</h2>
+        <div class="m-hero-row">
+          <span class="m-chip">Plan gratuit · 12 / 20</span>
+          <span class="m-pill">Nouveau projet</span>
+        </div>
+        <span class="m-float f1"></span><span class="m-float f2"></span><span class="m-float f3"></span>
+      </div>
+      <div class="m-search" role="presentation"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>Rechercher un projet ou un module</div>
+      <h3 class="m-h3">Modules</h3>
+      <div class="m-grid">
+        <div class="m-tile"><span class="m-ico c1"><svg viewBox="0 0 24 24"><path d="M6 4v12a3 3 0 0 0 3 3h4"/><circle cx="6" cy="18" r="1.8"/><circle cx="18" cy="6" r="1.8"/><circle cx="18" cy="16" r="1.8"/></svg></span>MY GIT</div>
+        <div class="m-tile"><span class="m-ico c2"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4 4 0 0 1 0 9z"/></svg></span>MY CLOUD</div>
+        <div class="m-tile"><span class="m-ico c3"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span>AI CHAT</div>
+        <div class="m-tile"><span class="m-ico c4"><svg viewBox="0 0 24 24"><path d="M8 8 4 12l4 4M16 8l4 4-4 4M14 5l-4 14"/></svg></span>API</div>
+      </div>
+      <nav class="m-tabs" aria-label="Navigation">
+        <a class="on" aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Accueil</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg>Projets</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20h4"/></svg><b class="m-dot"></b>Alertes</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>Profil</a>
+      </nav>
+    </div>
+    <figcaption>Accueil</figcaption>
+  </figure>
+
+  <!-- Écran 2 : projets -->
+  <figure class="m-device">
+    <div class="m-screen">
+      <div class="m-title">Projets</div>
+      <div class="m-seg" role="tablist"><span class="on">Tous</span><span>Actifs</span><span>Terminés</span></div>
+      <div class="m-search" role="presentation"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>Nom du projet</div>
+      <p class="m-group">Aujourd'hui</p>
+      <div class="m-card">
+        <div class="m-row"><span class="m-ico c1 sm"><svg viewBox="0 0 24 24"><path d="M6 4v12a3 3 0 0 0 3 3h4"/><circle cx="6" cy="18" r="1.8"/><circle cx="18" cy="6" r="1.8"/></svg></span><div class="m-meta"><strong>site-vitrine</strong><small>Dépôt MY GIT · branche main</small></div><span class="m-status ok">Publié</span></div>
+        <div class="m-row"><span class="m-ico c2 sm"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4 4 0 0 1 0 9z"/></svg></span><div class="m-meta"><strong>portfolio</strong><small>Import ZIP · compilation à venir</small></div><span class="m-status run">En cours</span></div>
+      </div>
+      <p class="m-group">Hier</p>
+      <div class="m-card">
+        <div class="m-row"><span class="m-ico c3 sm"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><div class="m-meta"><strong>assistant-faq</strong><small>Brouillon · 3 fichiers</small></div><span class="m-status draft">Brouillon</span></div>
+        <div class="m-row"><span class="m-ico c4 sm"><svg viewBox="0 0 24 24"><path d="M8 8 4 12l4 4M16 8l4 4-4 4"/></svg></span><div class="m-meta"><strong>api-test</strong><small>Build partiel · 1 erreur</small></div><span class="m-status warn">Partiel</span></div>
+      </div>
+      <nav class="m-tabs" aria-label="Navigation">
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Accueil</a>
+        <a class="on" aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg>Projets</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20h4"/></svg><b class="m-dot"></b>Alertes</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>Profil</a>
+      </nav>
+    </div>
+    <figcaption>Projets</figcaption>
+  </figure>
+
+  <!-- Écran 3 : notifications -->
+  <figure class="m-device">
+    <div class="m-screen">
+      <div class="m-title">Notifications</div>
+      <div class="m-seg" role="tablist"><span class="on">Toutes</span><span>Non lues</span><span>Sécurité</span></div>
+      <p class="m-group">Aujourd'hui</p>
+      <div class="m-card">
+        <div class="m-row unread"><span class="m-ico c2 sm"><svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4 4 0 0 1 0 9z"/></svg></span><div class="m-meta"><strong>Déploiement réussi</strong><small>site-vitrine est en ligne · 10 min</small></div></div>
+        <div class="m-row unread"><span class="m-ico c3 sm"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><div class="m-meta"><strong>Quota IA atteint à 80 %</strong><small>Plan gratuit · 1 h</small></div></div>
+      </div>
+      <p class="m-group">Plus tôt</p>
+      <div class="m-card">
+        <div class="m-row"><span class="m-ico c1 sm"><svg viewBox="0 0 24 24"><path d="M6 4v12a3 3 0 0 0 3 3h4"/></svg></span><div class="m-meta"><strong>Dépôt créé</strong><small>portfolio · hier</small></div></div>
+        <div class="m-row"><span class="m-ico c4 sm"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></span><div class="m-meta"><strong>Nouvelle connexion</strong><small>Confirmez que c'était vous</small></div></div>
+      </div>
+      <nav class="m-tabs" aria-label="Navigation">
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Accueil</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg>Projets</a>
+        <a class="on" aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20h4"/></svg><b class="m-dot"></b>Alertes</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>Profil</a>
+      </nav>
+    </div>
+    <figcaption>Notifications</figcaption>
+  </figure>
+
+  <!-- Écran 4 : profil -->
+  <figure class="m-device">
+    <div class="m-screen">
+      <div class="m-profile">
+        <span class="m-ring"><span class="m-avatar big">AF</span></span>
+        <strong>Yurei Seen Angel</strong>
+        <small>@fondateur · Alaska</small>
+      </div>
+      <p class="m-group">Compte</p>
+      <div class="m-card">
+        <div class="m-row"><span class="m-ico c4 sm"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg></span><div class="m-meta"><strong>Profil public</strong><small>aldetic.../@fondateur</small></div><span class="m-chev">›</span></div>
+        <div class="m-row"><span class="m-ico c1 sm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4a12 12 0 0 1 0 16"/></svg></span><div class="m-meta"><strong>Langue</strong><small>Français</small></div><span class="m-chev">›</span></div>
+      </div>
+      <p class="m-group">Préférences</p>
+      <div class="m-card">
+        <div class="m-row"><span class="m-ico c2 sm"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/></svg></span><div class="m-meta"><strong>Notifications</strong><small>Bientôt disponible</small></div><span class="m-switch" aria-disabled="true" title="Bientôt disponible"></span></div>
+        <div class="m-row"><span class="m-ico c3 sm"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg></span><div class="m-meta"><strong>Mode sombre</strong><small>Bascule le thème de la maquette</small></div><button type="button" class="m-switch" id="m-switch-dark" role="switch" aria-checked="false" aria-label="Mode sombre"></button></div>
+      </div>
+      <nav class="m-tabs" aria-label="Navigation">
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Accueil</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg>Projets</a>
+        <a aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20h4"/></svg><b class="m-dot"></b>Alertes</a>
+        <a class="on" aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>Profil</a>
+      </nav>
+    </div>
+    <figcaption>Profil</figcaption>
+  </figure>
+
+</main>
+<script>
+  (function () {
+    const btn = document.getElementById("m-theme");
+    const sw = document.getElementById("m-switch-dark");
+    const set = dark => {
+      document.body.classList.toggle("is-dark", dark);
+      btn.setAttribute("aria-pressed", String(dark));
+      btn.textContent = dark ? "Passer en clair" : "Passer en sombre";
+      sw.setAttribute("aria-checked", String(dark));
+      sw.classList.toggle("on", dark);
+    };
+    btn.addEventListener("click", () => set(!document.body.classList.contains("is-dark")));
+    sw.addEventListener("click", () => set(!document.body.classList.contains("is-dark")));
+  })();
+</script>
+</body>
+</html>

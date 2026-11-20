@@ -1,0 +1,104 @@
+/* Portfolio du fondateur : s'appuie sur base.css (tokens, boutons, panneaux, badges). */
+
+.p-hero { padding-top: clamp(56px, 8vw, 104px); border-top: 0; }
+.p-hero-grid {
+  display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(32px, 6vw, 80px); align-items: center;
+}
+.p-actions { display: flex; gap: var(--s-3); flex-wrap: wrap; }
+
+/* Orbite : anneaux holographiques en rotation lente, sans JavaScript */
+.p-orbit {
+  position: relative; width: min(340px, 80vw); aspect-ratio: 1; justify-self: center;
+  display: grid; place-items: center; perspective: 800px;
+}
+.p-orbit-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid transparent;
+  background: linear-gradient(var(--void), var(--void)) padding-box, var(--holo) border-box;
+  transform: rotateX(68deg) rotateZ(0deg);
+  animation: orbit 16s linear infinite;
+  opacity: .8;
+}
+.p-orbit-ring.r2 { inset: 18%; animation-duration: 11s; animation-direction: reverse; transform: rotateX(62deg) rotateY(20deg); opacity: .55; }
+.p-orbit-core {
+  position: relative; width: 116px; height: 116px; border-radius: 34px; display: grid; place-items: center;
+  font: 600 34px/1 var(--display); letter-spacing: -.03em;
+  background: var(--chrome); color: #05060a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 0 60px -10px rgba(50, 230, 255, .55), 0 0 90px -20px rgba(164, 107, 255, .6);
+}
+@keyframes orbit {
+  from { transform: rotateX(68deg) rotateZ(0deg); }
+  to   { transform: rotateX(68deg) rotateZ(360deg); }
+}
+
+/* Chiffres clés */
+.p-facts {
+  margin: clamp(48px, 7vw, 80px) 0 0; padding: var(--s-5) 0; border-top: 1px solid var(--glass-edge);
+  border-bottom: 1px solid var(--glass-edge);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-6);
+}
+.p-facts dt { font: 500 13px/1.4 var(--sans); color: var(--muted); margin-bottom: 6px; }
+.p-facts dd { margin: 0; font: 600 20px/1.3 var(--display); color: var(--fg); }
+
+.p-two { display: grid; grid-template-columns: 1fr 1.2fr; gap: clamp(32px, 6vw, 80px); align-items: start; }
+.p-prose p { color: var(--fg-2); font-size: 17px; max-width: 62ch; }
+.p-prose p + p { margin-top: var(--s-4); }
+
+/* Compétences */
+.p-skills { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s-4); margin-top: var(--s-6); }
+.p-skill ul { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: 12px; color: var(--fg-2); font-size: 15px; }
+.p-skill li { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.p-skill .badge { font-size: 10.5px; padding: 5px 8px; }
+
+/* Schéma d'architecture : les flux circulent, les liens pointillés restent lents */
+.p-diagram { padding: clamp(16px, 3vw, 32px); overflow: hidden; }
+.p-diagram svg { width: 100%; height: auto; }
+.p-diagram .node rect { fill: rgba(255,255,255,.035); stroke: var(--glass-edge); stroke-width: 1; }
+.p-diagram .node.core rect { fill: rgba(50,230,255,.07); stroke: rgba(50,230,255,.55); }
+.p-diagram .node.dashed rect { stroke-dasharray: 5 6; }
+.p-diagram .node text { fill: var(--fg); font: 600 17px var(--display); text-anchor: middle; }
+.p-diagram .node text.sub { fill: var(--muted); font: 400 13px var(--sans); }
+.p-diagram .flow { fill: none; stroke: url(#flow); stroke-width: 2; stroke-dasharray: 10 8; animation: flow 1.6s linear infinite; }
+.p-diagram .flow.dash { stroke: rgba(164, 107, 255, .5); stroke-dasharray: 3 7; animation-duration: 3.2s; }
+@keyframes flow { to { stroke-dashoffset: -36; } }
+
+/* Projets */
+.p-projects { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s-4); margin-top: var(--s-6); }
+.p-projects .panel { min-height: 220px; }
+
+/* Frise */
+.p-timeline { list-style: none; margin: 0; padding: 0; position: relative; display: grid; gap: var(--s-8); }
+.p-timeline::before {
+  content: ""; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 1px;
+  background: linear-gradient(var(--cyan), var(--violet) 60%, transparent);
+}
+.p-timeline li { position: relative; padding-left: 40px; }
+.p-timeline li::before {
+  content: ""; position: absolute; left: 0; top: 6px; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--void); border: 1px solid var(--cyan); box-shadow: 0 0 14px rgba(50,230,255,.5);
+}
+.p-timeline strong { font: 600 18px/1.3 var(--display); display: block; margin-bottom: 6px; }
+.p-timeline p { margin: 0; }
+.p-when { display: block; font: 500 13px var(--mono); color: var(--cyan); margin-bottom: 6px; }
+
+/* Ambition */
+.p-grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s-4); }
+
+/* Contact */
+.p-form { display: grid; gap: 0; }
+.p-form textarea { min-height: 140px; }
+
+@media (max-width: 900px) {
+  .p-hero-grid, .p-two { grid-template-columns: 1fr; }
+  .p-orbit { order: -1; width: 220px; }
+  .p-orbit-core { width: 80px; height: 80px; font-size: 24px; border-radius: 24px; }
+  .p-facts { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .p-facts { grid-template-columns: 1fr; gap: var(--s-4); }
+  .p-actions .btn { flex: 1 1 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-orbit-ring, .p-diagram .flow { animation: none !important; }
+}

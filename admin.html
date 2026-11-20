@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Administration · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:20px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/shield.svg" alt="" width="150" height="131"><p class="eyebrow">Administration</p><h1 style="font-size:clamp(34px,4.6vw,52px)">Recrutement</h1><p class="lead" style="margin-top:14px">Accès réservé aux comptes administrateurs. Chaque décision est enregistrée dans l'historique du candidat. <a href="admin-paiements.html">Paiements →</a></p></div></section>
+<section style="padding-top:8px"><div class="wrap">
+<p id="state" class="notice warn" hidden></p>
+<div id="panel" hidden>
+<div class="chips" role="group" aria-label="Section" style="margin-bottom:14px"><button class="chip" id="s-apps" type="button" aria-pressed="true">Candidatures</button><button class="chip" id="s-offers" type="button" aria-pressed="false">Offres</button></div>
+<div id="v-apps"><div class="panel"><div id="t-apps"></div></div>
+<div id="detail" class="panel" hidden style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h3 id="d-title"></h3><span id="d-status"></span></div>
+<p class="muted" id="d-meta"></p><p id="d-msg" style="white-space:pre-wrap"></p><p><button class="btn small ghost" id="d-cv" type="button" hidden>Télécharger le CV</button></p>
+<h4 style="margin-top:14px">Historique</h4><div id="d-events"></div>
+<h4 style="margin-top:14px">Décision</h4><div class="field"><label for="d-note">Message au candidat (obligatoire pour une demande d'informations)</label><textarea id="d-note" maxlength="2000"></textarea></div><div id="d-actions" style="display:flex;gap:8px;flex-wrap:wrap"></div><p class="err" id="d-err" role="alert"></p>
+<h4 style="margin-top:14px">Note interne</h4><div class="field"><textarea id="d-comment" maxlength="2000" aria-label="Note interne"></textarea></div><button class="btn small ghost" id="d-comment-go" type="button">Ajouter la note</button></div></div>
+<div id="v-offers" hidden><form class="panel" id="o-form" novalidate><h3>Nouvelle offre</h3>
+<div class="field"><label for="o-title">Intitulé</label><input id="o-title" maxlength="120"></div><div class="field"><label for="o-sum">Résumé</label><input id="o-sum" maxlength="300"></div>
+<div class="field"><label for="o-resp">Missions (une par ligne)</label><textarea id="o-resp"></textarea></div><div class="field"><label for="o-req">Compétences requises (une par ligne)</label><textarea id="o-req"></textarea></div>
+<div class="field"><label for="o-cond">Conditions</label><input id="o-cond" maxlength="300"></div><div class="field"><label for="o-ben">Avantages</label><input id="o-ben" maxlength="300"></div>
+<div class="field"><label for="o-role">Rôle attribué après acceptation</label><select id="o-role"><option value="">Aucun</option><option value="developer">Développeur</option></select></div>
+<button class="btn primary" type="submit">Publier l'offre</button> <p class="err" id="o-err" role="alert"></p></form>
+<div class="panel" style="margin-top:14px"><h3>Offres</h3><div id="t-offers"></div></div></div>
+</div></div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  const ST = { received: ["Reçue", ""], in_review: ["En examen", "warn"], info_requested: ["Informations demandées", "warn"], interview: ["Entretien", "warn"], accepted: ["Retenue", "ok"], rejected: ["Non retenue", "err"] };
+  const NEXT = { received: ["in_review", "rejected"], in_review: ["info_requested", "interview", "accepted", "rejected"], info_requested: ["in_review", "rejected"], interview: ["accepted", "rejected"], accepted: [], rejected: [] };
+  const VERB = { in_review: "Passer en examen", info_requested: "Demander des informations", interview: "Convoquer à un entretien", accepted: "Retenir", rejected: "Refuser" };
+  const pill = s => { const m = ST[s] || [s, ""]; return `<span class="pill ${m[1]}">${esc(tr(m[0]))}</span>`; };
+  if (!db) { say("Espace d'administration indisponible pour le moment."); return; }
+  const { data: s } = await db.auth.getSession();
+  if (!s || !s.session) { location.href = "connexion.html"; return; }
+  const { data: isAdmin } = await db.rpc("aldetic_is_admin");
+  if (isAdmin !== true) { say(tr("Accès refusé. Ce compte n'a pas le rôle nécessaire.")); return; }
+  $("panel").hidden = false;
+  let apps = [], offers = [], sel = null;
+  const offerTitle = id => (offers.find(o => o.id === id) || {}).title;
+  const apT = alTable($("t-apps"), { pageSize: 10, search: ["public_ref", "full_name", "email"], empty: tr("Aucune candidature pour le moment."), columns: [
+    { key: "public_ref", label: "Réf.", mono: true, sort: true, render: r => esc(r.public_ref) },
+    { key: "full_name", label: "Candidat", sort: true, render: r => `<b>${esc(r.full_name)}</b><span class="dt-sub">${esc(r.email)}</span>` },
+    { key: "role_title", label: "Poste", render: r => esc(offerTitle(r.offer_id) || r.role_title || "—") },
+    { key: "status", label: "Statut", sort: true, render: r => pill(r.status) },
+    { key: "created_at", label: "Date", sort: true, render: r => esc(new Date(r.created_at).toLocaleDateString(document.documentElement.lang)) },
+    { key: "id", label: "", align: "right", render: r => `<button class="btn small ghost" data-open="${esc(r.id)}" type="button">${esc(tr("Examiner"))}</button>` }] });
+  const ofT = alTable($("t-offers"), { pageSize: 10, empty: tr("Aucune offre."), columns: [
+    { key: "title", label: "Intitulé", sort: true, render: r => `<b>${esc(r.title)}</b><span class="dt-sub">${esc(r.slug)}</span>` },
+    { key: "status", label: "Statut", render: r => `<span class="pill ${r.status === "open" ? "ok" : ""}">${esc(tr(r.status === "open" ? "Ouverte" : r.status === "closed" ? "Fermée" : "Brouillon"))}</span>` },
+    { key: "id", label: "", align: "right", render: r => `<button class="btn small ghost" data-toggle="${esc(r.id)}" type="button">${esc(tr(r.status === "open" ? "Fermer" : "Ouvrir"))}</button>` }] });
+  async function loadOffers() { const { data } = await db.from("job_offers").select("id, slug, title, status").order("created_at", { ascending: false }); offers = data || []; ofT.setRows(offers); }
+  async function loadApps() { const { data, error } = await db.from("recruitment_applications").select("id, public_ref, full_name, email, role_title, offer_id, status, message, cv_path, links, user_id, created_at").order("created_at", { ascending: false }).limit(500); if (error) { say(tr("Impossible de charger les candidatures.")); return; } apps = data || []; apT.setRows(apps); }
+  async function openApp(id) {
+    sel = apps.find(a => a.id === id); if (!sel) return;
+    $("detail").hidden = false; $("d-err").textContent = ""; $("d-note").value = ""; $("d-comment").value = "";
+    $("d-title").textContent = sel.full_name + " · " + sel.public_ref; $("d-status").innerHTML = pill(sel.status);
+    $("d-meta").textContent = sel.email + " · " + (offerTitle(sel.offer_id) || sel.role_title || "");
+    $("d-msg").textContent = sel.message; $("d-cv").hidden = !sel.cv_path;
+    $("d-actions").innerHTML = (NEXT[sel.status] || []).map(n => `<button class="btn small ${n === "rejected" ? "ghost" : "primary"}" data-to="${n}" type="button">${esc(tr(VERB[n]))}</button>`).join("") || `<span class="muted">${esc(tr("Décision finale."))}</span>`;
+    const { data: ev } = await db.from("recruitment_events").select("kind, status_to, body, visible_to_candidate, created_at").eq("application_id", id).order("created_at", { ascending: true });
+    $("d-events").innerHTML = (ev || []).map(x => `<div class="event-row" style="margin-top:8px"><span class="event-dot"></span><div>${x.status_to ? pill(x.status_to) : ""} ${x.kind === "internal_comment" ? `<span class="pill">${esc(tr("Note interne"))}</span>` : ""} ${x.body ? esc(x.body) : ""}<small style="display:block">${esc(new Date(x.created_at).toLocaleString(document.documentElement.lang))}</small></div></div>`).join("");
+    $("detail").scrollIntoView({ behavior: "smooth" });
+  }
+  $("t-apps").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) openApp(b.dataset.open); });
+  $("d-actions").addEventListener("click", async e => {
+    const b = e.target.closest("[data-to]"); if (!b || !sel) return;
+    const to = b.dataset.to, note = $("d-note").value.trim();
+    if (to === "info_requested" && !note) { $("d-err").textContent = tr("Un message au candidat est obligatoire."); return; }
+    if ((to === "accepted" || to === "rejected") && !confirm(tr("Confirmer cette décision ? Elle est définitive."))) return;
+    const { data: r, error } = await db.rpc("application_transition", { p_id: sel.id, p_to: to, p_note: note || null, p_visible: true });
+    if (error || !r || !r.ok) { $("d-err").textContent = tr(r && r.reason === "invalid_transition" ? "Transition non autorisée." : "Action refusée."); return; }
+    toast(tr("Décision enregistrée")); const id = sel.id; await loadApps(); await openApp(id);
+  });
+  $("d-comment-go").addEventListener("click", async () => {
+    const t = $("d-comment").value.trim(); if (!t || !sel) return;
+    const { error } = await db.rpc("application_comment", { p_id: sel.id, p_body: t });
+    if (error) { $("d-err").textContent = tr("Action refusée."); return; }
+    const id = sel.id; await openApp(id);
+  });
+  $("d-cv").addEventListener("click", async () => {
+    const { data, error } = await db.storage.from("recruitment-cv").createSignedUrl(sel.cv_path, 60);
+    if (error || !data) { $("d-err").textContent = tr("CV indisponible."); return; }
+    window.open(data.signedUrl, "_blank", "noopener");
+  });
+  const setSec = k => { $("v-apps").hidden = k !== "apps"; $("v-offers").hidden = k !== "offers"; $("s-apps").setAttribute("aria-pressed", String(k === "apps")); $("s-offers").setAttribute("aria-pressed", String(k === "offers")); };
+  $("s-apps").addEventListener("click", () => setSec("apps")); $("s-offers").addEventListener("click", () => setSec("offers"));
+  const slugOf = n => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+  const lines = v => v.split("\n").map(x => x.trim()).filter(Boolean).slice(0, 20);
+  $("o-form").addEventListener("submit", async e => {
+    e.preventDefault(); $("o-err").textContent = "";
+    const title = $("o-title").value.trim(); if (title.length < 3) { $("o-err").textContent = tr("Intitulé trop court."); return; }
+    const row = { slug: slugOf(title) + "-" + Math.random().toString(36).slice(2, 6), title, summary: $("o-sum").value.trim(), responsibilities: lines($("o-resp").value), requirements: lines($("o-req").value), conditions: $("o-cond").value.trim(), benefits: $("o-ben").value.trim(), status: "open", created_by: s.session.user.id };
+    if ($("o-role").value) row.role_on_accept = $("o-role").value;
+    const { error } = await db.from("job_offers").insert(row);
+    if (error) { $("o-err").textContent = tr("Publication refusée."); return; }
+    $("o-form").reset(); toast(tr("Offre publiée")); await loadOffers();
+  });
+  $("t-offers").addEventListener("click", async e => {
+    const b = e.target.closest("[data-toggle]"); if (!b) return;
+    const o = offers.find(x => x.id === b.dataset.toggle); if (!o) return;
+    const { error } = await db.from("job_offers").update({ status: o.status === "open" ? "closed" : "open" }).eq("id", o.id);
+    if (error) { toast(tr("Action refusée.")); return; } await loadOffers();
+  });
+  await loadOffers(); await loadApps();
+});
+</script>
+
+
+
+</body></html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Assistance (administration) · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:22px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/shield.svg" alt="" width="150" height="131"><p class="eyebrow">Administration</p><h1 style="font-size:clamp(32px,4.8vw,54px)">Demandes des membres.</h1><p class="lead" style="margin-top:16px">Répondez, ajoutez des notes internes, fixez la priorité et le statut. Le membre est notifié à chaque réponse.</p></div></section>
+<section style="padding-top:8px"><div class="wrap">
+<p id="state" class="notice warn" hidden></p>
+<div id="panel" hidden>
+<div class="chips" role="group" aria-label="Filtre" style="margin-bottom:14px"><button class="chip" data-f="" type="button" aria-pressed="true">Toutes</button><button class="chip" data-f="open" type="button" aria-pressed="false">Ouvertes</button><button class="chip" data-f="waiting_user" type="button" aria-pressed="false">En attente du membre</button><button class="chip" data-f="resolved" type="button" aria-pressed="false">Résolues</button></div>
+<div class="panel"><div id="t-adm"></div></div>
+<div id="detail" class="panel" hidden style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h3 id="d-title"></h3><span id="d-status"></span></div><p class="muted" id="d-meta"></p><p id="d-desc" style="white-space:pre-wrap"></p>
+<div id="d-msgs"></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0"><div class="field"><label for="d-st">Statut</label><select id="d-st"></select></div><div class="field"><label for="d-pr">Priorité</label><select id="d-pr"></select></div><button class="btn small ghost" id="d-save" type="button" style="align-self:end">Enregistrer</button><button class="btn small ghost" id="d-assign" type="button" style="align-self:end">Me l'attribuer</button></div>
+<form id="d-form"><div class="field"><label for="d-body">Message</label><textarea id="d-body" maxlength="4000"></textarea></div><label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="d-int" style="width:auto;min-height:0"> <span>Note interne (invisible du membre)</span></label><button class="btn primary" type="submit">Envoyer</button> <p class="err" id="d-err" role="alert"></p></form></div>
+</div></div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  const ST = { open: ["Ouvert", "warn"], in_progress: ["En cours", "warn"], waiting_user: ["En attente de votre réponse", "warn"], resolved: ["Résolu", "ok"], closed: ["Clos", ""] };
+  const CAT = { general: "Général", account: "Compte", payment: "Paiement", project: "Projet", ai: "IA", recruitment: "Recrutement", other: "Autre" };
+  const PRI = { low: "Basse", normal: "Normale", high: "Haute", urgent: "Urgente" };
+  const pill = s => { const m = ST[s] || [s, ""]; return `<span class="pill ${m[1]}">${esc(tr(m[0]))}</span>`; };
+  const dt = d => new Date(d).toLocaleString(document.documentElement.lang);
+  if (!db) { say("Espace d'administration indisponible pour le moment."); return; }
+  const { data: s } = await db.auth.getSession(); if (!s || !s.session) { location.href = "connexion.html"; return; }
+  const { data: staff } = await db.rpc("aldetic_is_staff"); if (staff !== true) { say(tr("Accès refusé. Ce compte n'a pas le rôle nécessaire.")); return; }
+  $("panel").hidden = false; const me = s.session.user.id; let rows = [], cur = null, filter = "";
+  Object.entries(ST).forEach(([k, v]) => $("d-st").add(new Option(tr(v[0]), k))); Object.entries(PRI).forEach(([k, v]) => $("d-pr").add(new Option(tr(v), k)));
+  const tab = alTable($("t-adm"), { pageSize: 10, search: ["subject", "user_id"], empty: tr("Aucune demande."), columns: [
+    { key: "updated_at", label: "Mise à jour", sort: true, render: r => esc(dt(r.updated_at)) },
+    { key: "subject", label: "Objet", sort: true, render: r => `<b>${esc(r.subject)}</b><span class="dt-sub">${esc(tr(CAT[r.category] || r.category))} · ${esc(String(r.user_id).slice(0, 8))}</span>` },
+    { key: "priority", label: "Priorité", sort: true, render: r => esc(tr(PRI[r.priority] || r.priority)) },
+    { key: "status", label: "Statut", sort: true, render: r => pill(r.status) },
+    { key: "id", label: "", align: "right", render: r => `<button class="btn small ghost" data-open="${esc(r.id)}" type="button">${esc(tr("Ouvrir"))}</button>` }] });
+  async function load() {
+    let q = db.from("support_tickets").select("id, user_id, subject, description, category, status, priority, assigned_to, created_at, updated_at").order("updated_at", { ascending: false }).limit(500);
+    if (filter) q = q.eq("status", filter);
+    const { data, error } = await q; if (error) { say(tr("Impossible de charger les demandes.")); return; } say(""); rows = data || []; tab.setRows(rows);
+  }
+  async function open(id) {
+    cur = rows.find(r => r.id === id); if (!cur) return; $("detail").hidden = false; $("d-err").textContent = "";
+    $("d-title").textContent = cur.subject; $("d-status").innerHTML = pill(cur.status); $("d-meta").textContent = tr(CAT[cur.category] || cur.category) + " · " + String(cur.user_id).slice(0, 8) + " · " + dt(cur.created_at); $("d-desc").textContent = cur.description; $("d-st").value = cur.status; $("d-pr").value = cur.priority;
+    const { data } = await db.from("support_messages").select("sender_id, body, is_internal, created_at").eq("ticket_id", id).order("created_at", { ascending: true });
+    $("d-msgs").innerHTML = (data || []).map(m => `<div class="event-row" style="margin-top:10px"><span class="event-dot"></span><div><b>${esc(m.sender_id === cur.user_id ? tr("Membre") : tr("Support"))}</b> ${m.is_internal ? `<span class="pill warn">${esc(tr("Note interne"))}</span>` : ""} <small>${esc(dt(m.created_at))}</small><p style="white-space:pre-wrap;margin:4px 0 0">${esc(m.body)}</p></div></div>`).join("");
+    $("detail").scrollIntoView({ behavior: "smooth" });
+  }
+  $("t-adm").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) open(b.dataset.open); });
+  document.querySelectorAll("[data-f]").forEach(c => c.addEventListener("click", async () => { filter = c.dataset.f; document.querySelectorAll("[data-f]").forEach(x => x.setAttribute("aria-pressed", String(x === c))); await load(); }));
+  $("d-save").addEventListener("click", async () => { const { error } = await db.from("support_tickets").update({ status: $("d-st").value, priority: $("d-pr").value }).eq("id", cur.id); if (error) { $("d-err").textContent = tr("Action refusée."); return; } const id = cur.id; await load(); await open(id); });
+  $("d-assign").addEventListener("click", async () => { const { error } = await db.from("support_tickets").update({ assigned_to: me }).eq("id", cur.id); if (error) { $("d-err").textContent = tr("Action refusée."); return; } toast(tr("Attribuée")); });
+  $("d-form").addEventListener("submit", async e => { e.preventDefault(); const body = $("d-body").value.trim(); if (!body || !cur) return; const { error } = await db.from("support_messages").insert({ ticket_id: cur.id, body, is_internal: $("d-int").checked }); if (error) { $("d-err").textContent = tr("Envoi impossible."); return; } $("d-body").value = ""; $("d-int").checked = false; const id = cur.id; await load(); await open(id); });
+  await load();
+});
+</script>
+
+
+
+</body></html>

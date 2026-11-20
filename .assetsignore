@@ -1,0 +1,8 @@
+supabase
+docs
+tests-front
+.github
+android
+*.md
+*.zip
+index.before-v8.html

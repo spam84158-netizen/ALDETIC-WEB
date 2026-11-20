@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Cloud · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:22px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/cloud.svg" alt="" width="150" height="131"><p class="eyebrow">MY CLOUD</p><h1 style="font-size:clamp(32px,4.8vw,54px)">Publiez vos projets.</h1><p class="lead" style="margin-top:14px">Choisissez un projet, déployez-le en ligne, suivez les journaux, gérez variables et domaines, et revenez à une version précédente.</p></div></section>
+<section style="padding-top:8px"><div class="wrap">
+<p id="state" class="notice warn" hidden></p>
+<div id="app" hidden>
+<div class="panel" style="display:flex;gap:12px;flex-wrap:wrap;align-items:end"><div class="field" style="flex:1 1 240px;margin:0"><label for="proj">Projet</label><select id="proj"></select></div><button class="btn primary" id="deploy" type="button">Déployer</button><a class="btn ghost" id="live" href="#" target="_blank" rel="noopener" hidden>Ouvrir le site</a></div>
+<p id="msg" class="notice" role="status" hidden style="margin-top:12px"></p>
+<div class="panel" style="margin-top:14px"><h3>Déploiements</h3><div id="t-dep"></div></div>
+<div id="logs" class="panel" hidden style="margin-top:14px"><h3>Journal du déploiement</h3><pre id="log-body" style="white-space:pre-wrap;overflow:auto;max-height:320px"></pre></div>
+<div class="h-two" style="align-items:start;margin-top:14px">
+<div class="panel"><h3>Variables d'environnement</h3><p class="muted">Les valeurs sont envoyées chez Cloudflare comme secrets et ne sont jamais réaffichées.</p><ul id="env-list" class="stack-list"></ul>
+<form id="env-form" novalidate><div class="field"><label for="env-key">Nom (MAJUSCULES_ET_CHIFFRES)</label><input id="env-key" autocomplete="off"></div><div class="field"><label for="env-val">Valeur</label><input id="env-val" type="password" autocomplete="new-password"></div><button class="btn small primary" type="submit">Enregistrer la variable</button> <span class="err" id="env-err" role="alert"></span></form></div>
+<div class="panel"><h3>Domaines</h3><ul id="dom-list" class="stack-list"></ul>
+<form id="dom-form" novalidate><div class="field"><label for="dom">Nom de domaine</label><input id="dom" placeholder="www.monsite.ci" autocomplete="off"></div><button class="btn small primary" type="submit">Ajouter le domaine</button> <span class="err" id="dom-err" role="alert"></span></form><p class="muted" id="dom-help" style="margin-top:10px"></p></div>
+</div></div></div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  const note = t => { $("msg").textContent = t; $("msg").hidden = !t; };
+  const ST = { building: ["En cours", "warn"], ready: ["En ligne", "ok"], failed: ["Échec", "err"], rolled_back: ["Restauré", "warn"] };
+  const ERR = { index_html_required: "Le projet doit contenir un fichier index.html à la racine.", no_files: "Le projet ne contient aucun fichier.", too_many_files: "Trop de fichiers (200 maximum).", invalid_path: "Un nom de fichier n'est pas valide.", file_too_large: "Un fichier dépasse 500 000 caractères.", site_too_large: "Le site dépasse 5 Mo.", rate_limited: "Limite atteinte : 10 déploiements par heure.", cloudflare_not_configured: "La publication n'est pas encore reliée au compte Cloudflare par l'administration.", archived: "Projet archivé : restaurez-le d'abord.", phone_not_verified: "Vérifiez d'abord votre numéro.", invalid_key: "Nom de variable invalide (MAJUSCULES, chiffres, _).", invalid_value: "Valeur invalide.", invalid_domain: "Nom de domaine invalide.", domain_taken: "Ce domaine est déjà utilisé.", cloudflare_env_failed: "Cloudflare a refusé la variable.", cloudflare_domain_failed: "Cloudflare a refusé le domaine.", cloudflare_rollback_failed: "La restauration a échoué.", deployment_not_found: "Déploiement introuvable." };
+  const explain = c => tr(ERR[c] || "Le déploiement a échoué. Consultez le journal.");
+  const pill = st => { const m = ST[st] || [st, ""]; return `<span class="pill ${m[1]}">${esc(tr(m[0]))}</span>`; };
+  const dt = d => new Date(d).toLocaleString(document.documentElement.lang);
+  const safeHttps = u => (typeof u === "string" && /^https:\/\/[A-Za-z0-9.-]+(\/[^\s"'<>]*)?$/.test(u)) ? u : null;
+  if (!db) { say(tr("Le service de comptes n'est pas configuré.")); return; }
+  const { data: sess } = await db.auth.getSession();
+  if (!sess || !sess.session) { location.href = "connexion.html"; return; }
+  const me = sess.session.user.id;
+  const { data: projs, error: pe } = await db.from("projects").select("id, name, slug, status, owner_id").eq("owner_id", me).order("updated_at", { ascending: false });
+  if (pe) { say(tr("Impossible de charger vos projets.")); return; }
+  const mine = (projs || []).filter(p => p.status === "active");
+  if (!mine.length) { say(tr("Vous n'avez pas encore de projet actif.") + " "); $("state").insertAdjacentHTML("beforeend", `<a href="projets.html">${esc(tr("Créer un projet"))}</a>`); return; }
+  $("app").hidden = false; mine.forEach(p => $("proj").add(new Option(p.name, p.id)));
+  const pid = () => $("proj").value;
+  const call = async body => { const { data, error } = await db.functions.invoke("project-deploy", { body: { project_id: pid(), ...body } }); if (!error) return data || {}; let p = {}; try { p = await error.context.json(); } catch (_) {} const e = new Error(p.error || "network"); e.code = p.error || "network"; e.id = p.id; throw e; };
+  let rows = [];
+  const tDep = alTable($("t-dep"), { pageSize: 8, empty: tr("Aucun déploiement."), columns: [
+    { key: "created_at", label: "Date", sort: true, render: r => esc(dt(r.created_at)) },
+    { key: "status", label: "Statut", sort: true, render: r => pill(r.status) + (r.error ? `<span class="dt-sub">${esc(r.error)}</span>` : "") },
+    { key: "url", label: "Adresse", render: r => { const u = safeHttps(r.url); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace("https://", ""))}</a>` : "—"; } },
+    { key: "files_count", label: "Fichiers", align: "right", render: r => esc(r.files_count) },
+    { key: "id", label: "", align: "right", render: r => `<button class="btn small ghost" data-log="${esc(r.id)}" type="button">${esc(tr("Journal"))}</button>` + (r.status === "ready" ? ` <button class="btn small ghost" data-rb="${esc(r.id)}" type="button">${esc(tr("Restaurer"))}</button>` : "") }] });
+  async function loadAll() {
+    const [d, k, dm] = await Promise.all([
+      db.from("deployments").select("id, status, url, error, files_count, created_at").eq("project_id", pid()).order("created_at", { ascending: false }).limit(100),
+      db.from("project_env_keys").select("key, updated_at").eq("project_id", pid()).order("key"),
+      db.from("project_domains").select("domain, status").eq("project_id", pid()).order("created_at")]);
+    rows = d.data || []; tDep.setRows(rows);
+    const live = rows.find(r => r.status === "ready" && safeHttps(r.url)); $("live").hidden = !live; if (live) $("live").href = live.url;
+    $("env-list").innerHTML = (k.data || []).map(x => `<li class="event-row"><span class="dt-mono">${esc(x.key)}</span><button class="btn small ghost" data-envdel="${esc(x.key)}" type="button">${esc(tr("Supprimer"))}</button></li>`).join("") || `<li class="muted">${esc(tr("Aucune variable."))}</li>`;
+    $("dom-list").innerHTML = (dm.data || []).map(x => `<li class="event-row"><span class="dt-mono">${esc(x.domain)}</span><span class="pill ${x.status === "active" ? "ok" : x.status === "failed" ? "err" : "warn"}">${esc(tr(x.status === "active" ? "Actif" : x.status === "failed" ? "Échec" : "En attente DNS"))}</span></li>`).join("") || `<li class="muted">${esc(tr("Aucun domaine."))}</li>`;
+    $("logs").hidden = true; $("dom-help").textContent = "";
+  }
+  $("proj").addEventListener("change", () => { note(""); loadAll(); });
+  let busy = false;
+  $("deploy").addEventListener("click", async () => {
+    if (busy) return; busy = true; $("deploy").disabled = true; note(tr("Déploiement en cours…"));
+    try { const r = await call({ action: "deploy" }); note(tr("Site en ligne :") + " " + r.url); }
+    catch (e) { note(explain(e.code)); } finally { busy = false; $("deploy").disabled = false; await loadAll(); }
+  });
+  $("t-dep").addEventListener("click", async e => {
+    const l = e.target.closest("[data-log]"), r = e.target.closest("[data-rb]");
+    if (l) { const { data } = await db.from("deployment_logs").select("level, message, at").eq("deployment_id", l.dataset.log).order("id"); $("log-body").textContent = (data || []).map(x => `${new Date(x.at).toLocaleTimeString(document.documentElement.lang)} [${x.level}] ${x.message}`).join("\n") || tr("Aucune ligne."); $("logs").hidden = false; }
+    if (r) { if (!confirm(tr("Remettre cette version en ligne ?"))) return; try { await call({ action: "rollback", deployment_id: r.dataset.rb }); note(tr("Version restaurée.")); } catch (er) { note(explain(er.code)); } await loadAll(); }
+  });
+  $("env-form").addEventListener("submit", async e => {
+    e.preventDefault(); $("env-err").textContent = "";
+    try { await call({ action: "env_set", key: $("env-key").value.trim(), value: $("env-val").value }); $("env-key").value = ""; $("env-val").value = ""; await loadAll(); } catch (er) { $("env-err").textContent = explain(er.code); }
+  });
+  $("env-list").addEventListener("click", async e => { const b = e.target.closest("[data-envdel]"); if (!b) return; try { await call({ action: "env_delete", key: b.dataset.envdel }); } catch (er) { note(explain(er.code)); } await loadAll(); });
+  $("dom-form").addEventListener("submit", async e => {
+    e.preventDefault(); $("dom-err").textContent = "";
+    try { const r = await call({ action: "domain_add", domain: $("dom").value.trim().toLowerCase() }); $("dom").value = ""; await loadAll(); $("dom-help").textContent = tr("Chez votre registraire, créez un enregistrement CNAME vers") + " " + r.cname; } catch (er) { $("dom-err").textContent = explain(er.code); }
+  });
+  await loadAll();
+});
+</script>
+
+
+
+</body></html>

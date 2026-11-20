@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portefeuille · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:30px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/wallet.svg" alt="" width="150" height="131"><p class="eyebrow">Votre argent, au clair</p><h1 style="font-size:clamp(34px,5vw,58px)">Portefeuille</h1><p class="lead" style="margin-top:18px">Soldes, dépôts, retraits et historique. Chaque montant vient du journal financier, jamais d'un calcul de l'écran.</p></div></section>
+<section style="padding-top:12px"><div class="wrap">
+<p id="state" class="notice" hidden></p>
+<div class="h-stats"><div class="panel"><p class="h-stat-l muted">Solde disponible</p><p class="h-stat-v" id="b-av">—</p></div><div class="panel"><p class="h-stat-l muted">Réservé (retraits en cours)</p><p class="h-stat-v" id="b-rs">—</p></div><div class="panel"><p class="h-stat-l muted">Dépôts en attente</p><p class="h-stat-v" id="b-pd">—</p></div></div>
+<div class="h-two" style="align-items:start;margin-top:14px">
+<form class="panel" id="dep-form" novalidate><h3>Déposer</h3>
+<div class="field"><label for="dep-method">Moyen de paiement</label><select id="dep-method"></select></div>
+<div class="field"><label for="dep-amount">Montant (FCFA)</label><input id="dep-amount" inputmode="numeric" autocomplete="off"></div>
+<p class="muted" id="dep-min" style="font-size:13px"></p>
+<button class="btn primary" type="submit" id="dep-go">Créer le dépôt</button>
+<p class="err" id="dep-err" role="alert"></p><div id="dep-out" class="notice" hidden></div></form>
+<form class="panel" id="wd-form" novalidate><h3>Retirer</h3>
+<div class="field"><label for="wd-method">Moyen de retrait</label><select id="wd-method"></select></div>
+<div id="wd-dest"></div>
+<div class="field"><label for="wd-amount">Montant (FCFA)</label><input id="wd-amount" inputmode="numeric" autocomplete="off"></div>
+<div class="chips" style="margin:6px 0 12px;flex-wrap:wrap;overflow:visible"><span class="pill">Frais <b id="wd-fee">—</b></span><span class="pill">Vous recevez <b id="wd-net">—</b></span></div>
+<button class="btn primary" type="submit" id="wd-go">Demander le retrait</button>
+<p class="err" id="wd-err" role="alert"></p><p class="muted" id="wd-ok" role="status"></p></form>
+</div>
+<div class="panel" style="margin-top:14px"><h3>Historique du portefeuille</h3><div id="t-entries"></div></div>
+<div class="h-two" style="align-items:start;margin-top:14px"><div class="panel"><h3>Dépôts</h3><div id="t-deps"></div></div><div class="panel"><h3>Retraits</h3><div id="t-wds"></div></div></div>
+</div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const METHODS = [["orange_money","Orange Money"],["mtn_momo","MTN Mobile Money"],["moov_money","Moov Money"],["wave","Wave"],["card","Visa / Mastercard"],["bank_transfer","Virement bancaire international"]];
+  const LBL = Object.fromEntries(METHODS);
+  const money = n => new Intl.NumberFormat(document.documentElement.lang, { style: "currency", currency: "XOF", maximumFractionDigits: 0 }).format(n || 0);
+  const date = d => new Date(d).toLocaleString(document.documentElement.lang);
+  const KIND = { deposit: "Dépôt", withdrawal_reserve: "Retrait demandé", withdrawal_release: "Retrait annulé", withdrawal_paid: "Retrait payé", revenue: "Revenu", fee: "Frais", refund: "Remboursement", adjustment: "Ajustement" };
+  const STATUS = { pending: ["En attente", "warn"], confirmed: ["Confirmé", "ok"], rejected: ["Refusé", "err"], failed: ["Échoué", "err"], refunded: ["Remboursé", "warn"], requested: ["Demandé", "warn"], approved: ["Approuvé", "warn"], paid: ["Payé", "ok"] };
+  const pill = s => { const m = STATUS[s] || [s, ""]; return `<span class="pill ${m[1]}">${esc(tr(m[0]))}</span>`; };
+  const ERR = { method_not_enabled: "Ce moyen n'est pas activé par l'administration.", provider_not_configured: "Le prestataire de ce moyen n'est pas connecté. Aucun dépôt n'a été créé.", provider_error: "Le prestataire a refusé la demande. Réessayez.", invalid_amount: "Montant invalide.", below_minimum: "Montant inférieur au minimum.", insufficient_funds: "Solde disponible insuffisant.", invalid_phone: "Numéro invalide (format +225…).", invalid_iban: "IBAN invalide.", invalid_holder: "Nom du titulaire requis.", withdraw_not_supported: "Le retrait n'est pas disponible pour ce moyen.", amount_too_low_for_fees: "Montant trop faible par rapport aux frais.", phone_not_verified: "Vérifiez d'abord votre numéro.", auth_required: "Connexion requise.", invalid_session: "Session expirée. Reconnectez-vous." };
+  const explain = c => tr(ERR[c] || "Une erreur est survenue. Réessayez.");
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  METHODS.forEach(([k, l]) => $("dep-method").add(new Option(tr(l), k)));
+  METHODS.filter(m => m[0] !== "card").forEach(([k, l]) => $("wd-method").add(new Option(tr(l), k)));
+  if (!db) { say(tr("Le service de comptes n'est pas configuré.")); return; }
+  const { data: sess } = await db.auth.getSession();
+  if (!sess || !sess.session) { location.href = "connexion.html"; return; }
+  const me = sess.session.user.id;
+  let S = {};
+  const T = {
+    entries: alTable($("t-entries"), { pageSize: 10, empty: tr("Aucune opération."), columns: [
+      { key: "created_at", label: "Date", sort: true, render: r => esc(date(r.created_at)) },
+      { key: "kind", label: "Type", sort: true, render: r => esc(tr(KIND[r.kind] || r.kind)) },
+      { key: "available_delta", label: "Montant", sort: true, align: "right", render: r => `<b>${esc((r.available_delta > 0 ? "+" : "") + money(r.available_delta || -r.reserved_delta || 0))}</b>` }] }),
+    deps: alTable($("t-deps"), { pageSize: 5, empty: tr("Aucun dépôt."), columns: [
+      { key: "internal_ref", label: "Référence", mono: true, render: r => esc(r.internal_ref) },
+      { key: "method", label: "Moyen", render: r => esc(tr(LBL[r.method] || r.method)) },
+      { key: "amount_minor", label: "Montant", sort: true, align: "right", render: r => esc(money(r.amount_minor)) },
+      { key: "status", label: "Statut", render: r => pill(r.status) }] }),
+    wds: alTable($("t-wds"), { pageSize: 5, empty: tr("Aucun retrait."), columns: [
+      { key: "created_at", label: "Date", sort: true, render: r => esc(date(r.created_at)) },
+      { key: "method", label: "Moyen", render: r => esc(tr(LBL[r.method] || r.method)) },
+      { key: "amount_minor", label: "Montant", sort: true, align: "right", render: r => `${esc(money(r.amount_minor))}<span class="dt-sub">${esc(tr("Frais"))} ${esc(money(r.fee_minor))} · ${esc(tr("Net"))} ${esc(money(r.amount_minor - r.fee_minor))}</span>` },
+      { key: "status", label: "Statut", render: r => pill(r.status) }] })
+  };
+  async function refresh() {
+    const [bal, en, dp, wd] = await Promise.all([
+      db.from("wallet_balances").select("available, reserved, currency").eq("user_id", me),
+      db.from("wallet_entries").select("id, kind, available_delta, reserved_delta, created_at").order("created_at", { ascending: false }).limit(200),
+      db.from("deposits").select("id, internal_ref, method, amount_minor, status, created_at").order("created_at", { ascending: false }).limit(100),
+      db.from("withdrawals").select("id, method, amount_minor, fee_minor, status, created_at").order("created_at", { ascending: false }).limit(100)]);
+    if (bal.error || en.error || dp.error || wd.error) { say(tr("Impossible de charger le portefeuille. Réessayez.")); return; }
+    say("");
+    const b = (bal.data || []).find(x => x.currency === "XOF") || { available: 0, reserved: 0 };
+    $("b-av").textContent = money(b.available); $("b-rs").textContent = money(b.reserved);
+    $("b-pd").textContent = String((dp.data || []).filter(x => x.status === "pending").length);
+    T.entries.setRows(en.data || []); T.deps.setRows(dp.data || []); T.wds.setRows(wd.data || []);
+  }
+  const st = await db.from("platform_settings").select("key, value");
+  (st.data || []).forEach(r => { S[r.key] = r.value; });
+  $("dep-min").textContent = S.deposit_min ? tr("Dépôt minimum") + " : " + money(S.deposit_min) : "";
+  function destFields() {
+    const m = $("wd-method").value;
+    $("wd-dest").innerHTML = m === "bank_transfer"
+      ? `<div class="field"><label for="d-iban">IBAN</label><input id="d-iban" autocomplete="off"></div><div class="field"><label for="d-holder">${esc(tr("Titulaire du compte"))}</label><input id="d-holder" autocomplete="off"></div><div class="field"><label for="d-bic">BIC (${esc(tr("facultatif"))})</label><input id="d-bic" autocomplete="off"></div>`
+      : `<div class="field"><label for="d-phone">${esc(tr("Numéro du compte mobile"))}</label><input id="d-phone" placeholder="+225…" inputmode="tel" autocomplete="off"></div>`;
+  }
+  function preview() {
+    const a = parseInt($("wd-amount").value.replace(/\s/g, ""), 10), f = S.withdraw_fee || { percent: 0, min: 0 };
+    if (!(a > 0)) { $("wd-fee").textContent = "—"; $("wd-net").textContent = "—"; return; }
+    const fee = Math.max(Math.ceil(a * (Number(f.percent) || 0) / 100), Number(f.min) || 0);
+    $("wd-fee").textContent = money(fee); $("wd-net").textContent = money(a - fee);
+  }
+  $("wd-method").addEventListener("change", destFields); $("wd-amount").addEventListener("input", preview); destFields();
+  async function call(body) {
+    const { data, error } = await db.functions.invoke("wallet-api", { body });
+    if (!error) return data || {};
+    let p = {}; try { p = await error.context.json(); } catch (_) {}
+    const e = new Error(p.error || "network"); e.code = p.error || "network"; throw e;
+  }
+  const amountOf = id => { const v = $(id).value.replace(/\s/g, ""); return /^\d+$/.test(v) ? parseInt(v, 10) : NaN; };
+  let busy = false;
+  $("dep-form").addEventListener("submit", async ev => {
+    ev.preventDefault(); if (busy) return; $("dep-err").textContent = ""; $("dep-out").hidden = true;
+    const amount = amountOf("dep-amount"); if (!(amount > 0)) { $("dep-err").textContent = explain("invalid_amount"); return; }
+    busy = true; $("dep-go").disabled = true;
+    try {
+      const r = await call({ action: "deposit", method: $("dep-method").value, amount });
+      let html = `<b>${esc(tr("Référence"))} : <span class="dt-mono">${esc(r.internal_ref)}</span></b>`;
+      if (r.checkout_url && /^https:\/\//.test(r.checkout_url)) html += `<p><a class="btn small" href="${esc(r.checkout_url)}" rel="noopener">${esc(tr("Payer maintenant"))}</a></p>`;
+      if (r.instructions && typeof r.instructions === "object") html += Object.entries(r.instructions).map(([k, v]) => `<p style="margin:6px 0 0"><span class="muted">${esc(k)}</span> <b>${esc(v)}</b></p>`).join("");
+      else if (typeof r.instructions === "string") html += `<p>${esc(r.instructions)}</p>`;
+      html += `<p class="muted" style="margin-top:8px">${esc(tr("Votre portefeuille sera crédité uniquement après confirmation réelle du paiement."))}</p>`;
+      $("dep-out").innerHTML = html; $("dep-out").hidden = false; await refresh();
+    } catch (e) { $("dep-err").textContent = explain(e.code); } finally { busy = false; $("dep-go").disabled = false; }
+  });
+  $("wd-form").addEventListener("submit", async ev => {
+    ev.preventDefault(); if (busy) return; $("wd-err").textContent = ""; $("wd-ok").textContent = "";
+    const amount = amountOf("wd-amount"); if (!(amount > 0)) { $("wd-err").textContent = explain("invalid_amount"); return; }
+    const m = $("wd-method").value, v = id => ($(id) ? $(id).value.trim() : "");
+    const destination = m === "bank_transfer" ? { iban: v("d-iban"), holder: v("d-holder"), bic: v("d-bic") } : { phone: v("d-phone") };
+    busy = true; $("wd-go").disabled = true;
+    try {
+      const r = await call({ action: "withdraw", method: m, amount, destination });
+      $("wd-ok").textContent = tr("Demande envoyée") + " · " + tr("Frais") + " " + money(r.fee) + " · " + tr("Net") + " " + money(r.net) + ". " + tr("Le montant est réservé jusqu'à la décision de l'administration.");
+      $("wd-amount").value = ""; preview(); await refresh();
+    } catch (e) { $("wd-err").textContent = explain(e.code); } finally { busy = false; $("wd-go").disabled = false; }
+  });
+  await refresh();
+});
+</script>
+
+</body></html>

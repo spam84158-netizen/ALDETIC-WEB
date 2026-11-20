@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vérification du numéro · Aldetic</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="false">
+<div id="site-header"></div>
+<main>
+<section style="padding-top:clamp(56px,8vw,96px);border:0">
+  <div class="wrap" style="max-width:480px">
+    <p class="eyebrow">Vérification</p>
+    <h1 style="font-size:clamp(36px,4.6vw,50px)">Votre numéro</h1>
+    <p class="lead" style="margin:16px 0 12px">Étape obligatoire avant l'accès à la plateforme.</p>
+    <p class="muted" style="margin:0 0 24px;font-size:13px">Mode simulation gratuit : un code apparaît après 3 secondes. Aucun SMS réel n'est envoyé et la possession du numéro n'est pas prouvée.</p>
+    <form id="step-phone" class="panel" novalidate>
+      <div class="field"><label for="country">Pays</label><select id="country"></select></div>
+      <div class="field"><label for="phone">Numéro (sans l'indicatif)</label><input id="phone" type="tel" inputmode="tel" autocomplete="tel-national" required>
+        <small id="fmt">Le numéro doit correspondre à l'indicatif du pays choisi.</small><span class="err" id="perr"></span></div>
+      <div id="wait" class="notice" hidden style="margin:12px 0">Génération de votre code sécurisé… (3 secondes)</div>
+      <button class="btn primary" type="submit" style="width:100%">Enregistrer le numéro</button>
+    </form>
+    <form id="step-code" class="panel" hidden novalidate>
+      <p id="sent" class="muted" style="margin:0 0 16px"></p>
+      <div id="demo-code-box" class="notice" hidden style="margin:14px 0;padding:16px;text-align:center"><small style="display:block;margin-bottom:8px">CODE DE SIMULATION</small><strong id="demo-code" style="display:block;font:600 32px/1.4 'JetBrains Mono',monospace;letter-spacing:8px">------</strong><button id="copy-code" class="btn" type="button" style="margin-top:10px">Copier le code</button></div>
+      <div class="field" style="margin-top:14px"><label for="code">Code à 6 chiffres</label><input id="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code"><span class="err" id="cerr"></span></div>
+      <button class="btn primary" type="submit" style="width:100%">Valider</button>
+    </form>
+  </div>
+</section>
+</main>
+<div id="site-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/countries.js"></script><script src="assets/js/i18n-en.js"></script>
+<script src="assets/js/i18n-es.js"></script>
+<script src="assets/js/i18n-pt.js"></script>
+<script src="assets/js/i18n-ar.js"></script>
+<script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/app.js"></script><script src="assets/js/phone.js"></script>
+</body></html>

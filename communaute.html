@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Communauté · Aldetic Frontiers</title>
+<meta name="description" content="Aldetic Frontiers Ltd : Technology Beyond Limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Sans+Arabic:wght@600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/base.css">
+<script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="false">
+<div id="site-header"></div>
+<main>
+<section class="h-hero" style="padding-bottom:32px">
+  <div class="wrap"><img class="hero-art" src="assets/brand/illustrations/chat.svg" alt="" width="150" height="131" loading="lazy">
+    <p class="eyebrow">Communauté</p>
+    <h1 style="font-size:clamp(36px,5.4vw,60px)">Publiez, échangez, collaborez.</h1>
+    <p class="lead" style="margin-top:18px">Partagez vos mises à jour et trouvez des collaborateurs.</p>
+  </div>
+</section>
+<section style="padding-top:8px">
+  <div class="wrap h-two" style="align-items:start">
+    <div>
+      <p id="db-note" class="notice" hidden>Publications enregistrées sur cet appareil.</p>
+      <form id="composer" class="panel" novalidate style="margin-top:12px">
+        <label for="body" class="eyebrow" style="margin-bottom:10px">Nouvelle publication</label>
+        <textarea id="body" maxlength="1000" placeholder="Que partagez-vous ?" aria-describedby="count"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;flex-wrap:wrap">
+          <span class="muted" style="font-size:13px"><span id="count">0</span> / 1000</span>
+          <button class="btn primary small" type="submit">Publier</button>
+        </div>
+        <p class="err" id="perr" role="alert"></p>
+      </form>
+    </div>
+    <div>
+      <p id="none" class="empty" hidden>Aucune publication pour le moment. Soyez le premier à partager une mise à jour.</p>
+      <div id="feed" style="display:grid;gap:14px"></div>
+    </div>
+  </div>
+</section>
+</main>
+<script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const note = $("db-note"), body = $("body"), count = $("count"), feed = $("feed"), none = $("none"), composer = $("composer"), perr = $("perr");
+  const submitBtn = composer.querySelector('button[type="submit"]');
+  const PAGE = 15; let page = 0, me = null, verified = false, canMore = false;
+  body.addEventListener("input", () => count.textContent = body.value.length);
+  const lock = () => { body.disabled = true; submitBtn.disabled = true; };
+  const say = (html) => { note.innerHTML = html; note.hidden = false; };
+  const explain = e => {
+    const m = (e && (e.message || "")) + "";
+    if (m.includes("rate_limited")) return tr("Trop d'actions en peu de temps. Réessayez plus tard.");
+    if (m.includes("only_author_can_edit")) return tr("Seul l'auteur peut modifier ce contenu.");
+    if (e && (e.code === "42501" || m.includes("row-level security"))) return tr("Action refusée : vérifiez votre compte et votre numéro.");
+    if (e && e.code === "23505") return tr("Déjà enregistré.");
+    return tr("Une erreur est survenue. Réessayez.");
+  };
+  const name = r => (r && r.author && (r.author.display_name || r.author.username)) || tr("Membre");
+  const fmt = d => new Date(d).toLocaleString(document.documentElement.lang);
+
+  if (!db) { say(tr("Le service de comptes n'est pas configuré.")); lock(); none.hidden = true; return; }
+  const { data: sess } = await db.auth.getSession();
+  if (!sess || !sess.session) { say(tr("Connectez-vous pour voir et publier des contenus.") + ' <a href="connexion.html">' + tr("Se connecter") + "</a>"); lock(); none.hidden = true; return; }
+  me = sess.session.user.id;
+  const { data: prof } = await db.from("profiles").select("phone_verified").eq("id", me).maybeSingle();
+  verified = !!(prof && prof.phone_verified);
+  if (!verified) { say(tr("Vérifiez votre numéro pour publier, commenter et réagir.") + ' <a href="verification-telephone.html">' + tr("Vérifier mon numéro") + "</a>"); lock(); }
+
+  async function fetchPosts() {
+    const cols = "id, body, created_at, author_id, repost_of";
+    const range = [page * PAGE, page * PAGE + PAGE - 1];
+    let r = await db.from("posts").select(cols + ", author:profiles!posts_author_id_fkey(display_name, username)").is("deleted_at", null).order("created_at", { ascending: false }).range(range[0], range[1]);
+    if (r.error) r = await db.from("posts").select(cols).is("deleted_at", null).order("created_at", { ascending: false }).range(range[0], range[1]);
+    return r;
+  }
+  function card(p, st, liked) {
+    const mine = p.author_id === me;
+    return `<article class="panel" style="padding:20px" data-id="${esc(p.id)}">
+      <p class="muted" style="margin:0 0 8px;font-size:13px">${esc(name(p))} · ${esc(fmt(p.created_at))}${p.repost_of ? " · " + esc(tr("Repartage")) : ""}</p>
+      <p style="margin:0 0 14px;white-space:pre-wrap">${esc(p.body)}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small ghost" data-act="like" aria-pressed="${liked}"><span data-n="reactions">${st.reactions}</span> ♥</button>
+        <button class="btn small ghost" data-act="comments">${esc(tr("Commentaires"))} (<span data-n="comments">${st.comments}</span>)</button>
+        <button class="btn small ghost" data-act="repost">${esc(tr("Repartager"))} (${st.reposts})</button>
+        <button class="btn small ghost" data-act="report">${esc(tr("Signaler"))}</button>
+        ${mine ? `<button class="btn small ghost" data-act="delete">${esc(tr("Supprimer"))}</button>` : ""}
+      </div>
+      <form class="rp" hidden style="margin-top:12px"><input name="reason" maxlength="500" placeholder="${esc(tr("Motif du signalement"))}" style="width:100%"><button class="btn small primary" type="submit" style="margin-top:8px">${esc(tr("Envoyer le signalement"))}</button></form>
+      <div class="cm" hidden style="margin-top:14px"></div>
+      <p class="err" data-err role="alert"></p></article>`;
+  }
+  async function load(reset) {
+    if (reset) { page = 0; feed.innerHTML = ""; }
+    const { data, error } = await fetchPosts();
+    if (error) { say(explain(error)); return; }
+    const ids = (data || []).map(p => p.id);
+    let stats = {}, mine = new Set();
+    if (ids.length) {
+      const s = await db.from("post_stats").select("post_id, comments, reactions, reposts").in("post_id", ids);
+      (s.data || []).forEach(r => stats[r.post_id] = r);
+      const m = await db.from("reactions").select("target_id").eq("user_id", me).eq("target_type", "post").in("target_id", ids);
+      (m.data || []).forEach(r => mine.add(r.target_id));
+    }
+    feed.insertAdjacentHTML("beforeend", (data || []).map(p => card(p, stats[p.id] || { comments: 0, reactions: 0, reposts: 0 }, mine.has(p.id))).join(""));
+    none.hidden = feed.children.length > 0; canMore = (data || []).length === PAGE;
+    let more = $("more"); if (!more) { more = document.createElement("button"); more.id = "more"; more.className = "btn ghost"; more.textContent = tr("Charger plus"); more.addEventListener("click", () => { page++; load(false); }); feed.after(more); }
+    more.hidden = !canMore;
+  }
+  async function loadComments(art) {
+    const box = art.querySelector(".cm"), id = art.dataset.id;
+    const cols = "id, parent_id, author_id, body, created_at";
+    let r = await db.from("comments").select(cols + ", author:profiles!comments_author_id_fkey(display_name, username)").eq("post_id", id).is("deleted_at", null).order("created_at", { ascending: true });
+    if (r.error) r = await db.from("comments").select(cols).eq("post_id", id).is("deleted_at", null).order("created_at", { ascending: true });
+    if (r.error) { box.innerHTML = `<p class="err">${esc(explain(r.error))}</p>`; return; }
+    const rows = r.data || [], top = rows.filter(c => !c.parent_id);
+    const one = (c, child) => `<div style="margin:${child ? "6px 0 0 18px" : "10px 0 0"}" data-cid="${esc(c.id)}"><p class="muted" style="margin:0;font-size:12px">${esc(name(c))} · ${esc(fmt(c.created_at))}</p><p style="margin:2px 0;white-space:pre-wrap">${esc(c.body)}</p>${child ? "" : `<button class="btn small ghost" data-act="reply" data-parent="${esc(c.id)}">${esc(tr("Répondre"))}</button>`}</div>`;
+    box.innerHTML = top.map(c => one(c, false) + rows.filter(x => x.parent_id === c.id).map(x => one(x, true)).join("")).join("") +
+      (verified ? `<form class="cf" style="margin-top:10px"><input type="hidden" name="parent"><textarea name="text" maxlength="2000" rows="2" placeholder="${esc(tr("Votre commentaire"))}" style="width:100%"></textarea><button class="btn small primary" type="submit" style="margin-top:8px">${esc(tr("Commenter"))}</button></form>` : "");
+  }
+  const setN = (art, k, d) => { const n = art.querySelector(`[data-n="${k}"]`); n.textContent = Math.max(0, +n.textContent + d); };
+
+  composer.addEventListener("submit", async e => {
+    e.preventDefault();
+    const text = body.value.trim();
+    if (text.length < 3) { perr.textContent = tr("Écrivez au moins 3 caractères."); return; }
+    submitBtn.disabled = true; perr.textContent = "";
+    const { error } = await db.from("posts").insert({ author_id: me, body: text });
+    submitBtn.disabled = !verified;
+    if (error) { perr.textContent = explain(error); return; }
+    body.value = ""; count.textContent = "0"; toast(tr("Publié")); load(true);
+  });
+  feed.addEventListener("submit", async e => {
+    e.preventDefault();
+    const art = e.target.closest("article"), id = art.dataset.id, err = art.querySelector("[data-err]"); err.textContent = "";
+    if (e.target.classList.contains("rp")) {
+      const reason = e.target.reason.value.trim();
+      if (reason.length < 3) { err.textContent = tr("Précisez le motif."); return; }
+      const { error } = await db.from("reports").insert({ reporter_id: me, target_type: "post", target_id: id, reason });
+      if (error) { err.textContent = error.code === "23505" ? tr("Vous avez déjà signalé ce contenu.") : explain(error); return; }
+      e.target.hidden = true; e.target.reason.value = ""; toast(tr("Signalement transmis à la modération."));
+    } else if (e.target.classList.contains("cf")) {
+      const text = e.target.text.value.trim(), parent = e.target.parent.value || null;
+      if (!text) return;
+      const { error } = await db.from("comments").insert({ post_id: id, parent_id: parent, author_id: me, body: text });
+      if (error) { err.textContent = explain(error); return; }
+      setN(art, "comments", 1); await loadComments(art);
+    }
+  });
+  feed.addEventListener("click", async e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const art = b.closest("article"), id = art.dataset.id, err = art.querySelector("[data-err]"); err.textContent = "";
+    const act = b.dataset.act;
+    if (act === "like") {
+      const on = b.getAttribute("aria-pressed") === "true";
+      const r = on ? await db.from("reactions").delete().eq("user_id", me).eq("target_type", "post").eq("target_id", id)
+                   : await db.from("reactions").insert({ user_id: me, target_type: "post", target_id: id, kind: "like" });
+      if (r.error) { err.textContent = explain(r.error); return; }
+      b.setAttribute("aria-pressed", String(!on)); setN(art, "reactions", on ? -1 : 1);
+    } else if (act === "comments") {
+      const box = art.querySelector(".cm"); box.hidden = !box.hidden; if (!box.hidden) loadComments(art);
+    } else if (act === "reply") {
+      const f = art.querySelector(".cf"); if (f) { f.parent.value = b.dataset.parent; f.text.focus(); }
+    } else if (act === "repost") {
+      const orig = art.querySelectorAll("p")[1].textContent;
+      const { error } = await db.from("posts").insert({ author_id: me, body: orig.slice(0, 5000), repost_of: id });
+      if (error) { err.textContent = explain(error); return; }
+      toast(tr("Repartagé")); load(true);
+    } else if (act === "report") {
+      art.querySelector(".rp").hidden = !art.querySelector(".rp").hidden;
+    } else if (act === "delete") {
+      const { error } = await db.from("posts").update({ deleted_at: new Date().toISOString() }).eq("id", id).eq("author_id", me);
+      if (error) { err.textContent = explain(error); return; }
+      art.remove(); none.hidden = feed.children.length > 0;
+    }
+  });
+  load(true);
+});
+</script>
+<div id="site-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script>
+<script src="assets/js/i18n-es.js"></script>
+<script src="assets/js/i18n-pt.js"></script>
+<script src="assets/js/i18n-ar.js"></script>
+<script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/motion.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/ask-ai.js"></script>
+
+</body>
+</html>

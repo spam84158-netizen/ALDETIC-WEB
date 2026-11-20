@@ -1,0 +1,4 @@
+scripts/secrets.sh
+.env
+.env.*
+*.key

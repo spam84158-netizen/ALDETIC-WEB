@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Projets · Aldetic Frontiers</title><meta name="description" content="Retrouvez vos alertes et définissez les événements pour lesquels vous souhaitez être informé."><link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/css/base.css"><script>try{var t=localStorage.getItem('aldetic-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script></head>
+<body data-protected="true"><div id="site-header"></div><main><section class="h-hero" style="padding-bottom:26px"><div class="wrap"><img class="hero-art" src="assets/brand/illustrations/code.svg" alt="" width="150" height="131"><p class="eyebrow">Projets</p><h1 style="font-size:clamp(34px,5vw,58px)">Vos projets.</h1><p class="lead" style="margin-top:18px">Créez, éditez et publiez. Chaque fichier garde son historique de versions.</p></div></section>
+<section style="padding-top:12px"><div class="wrap">
+<p id="state" class="notice" hidden></p>
+<div class="chips" role="group" aria-label="Filtre" style="margin-bottom:14px"><button class="chip" id="t-mine" type="button" aria-pressed="true">Mes projets</button><button class="chip" id="t-public" type="button" aria-pressed="false">Projets publics</button></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"><input id="pq" class="search-field" type="search" placeholder="Rechercher un projet" aria-label="Rechercher un projet" style="flex:1 1 220px"><button class="btn primary" id="new-toggle" type="button">Nouveau projet</button></div>
+<form class="panel" id="new-form" hidden novalidate style="margin-bottom:14px"><h3>Nouveau projet</h3>
+<div class="field"><label for="n-name">Nom</label><input id="n-name" maxlength="80" autocomplete="off"></div>
+<div class="field"><label for="n-desc">Description</label><input id="n-desc" maxlength="500" autocomplete="off"></div>
+<div class="field"><label for="n-vis">Visibilité</label><select id="n-vis"><option value="private">Privé</option><option value="public">Public</option></select></div>
+<button class="btn primary" type="submit" id="n-go">Créer le projet</button> <p class="err" id="n-err" role="alert"></p></form>
+<div id="plist" class="stack-list"></div><p id="pempty" class="empty" hidden>Aucun projet.</p>
+</div></section>
+</main><div id="site-footer"></div><script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script><script src="assets/js/supabase.js"></script>
+<script src="assets/js/i18n-en.js"></script><script src="assets/js/i18n-es.js"></script><script src="assets/js/i18n-pt.js"></script><script src="assets/js/i18n-ar.js"></script><script src="assets/js/i18n-de.js"></script>
+<script src="assets/js/table.js"></script><script src="assets/js/app.js"></script><script src="assets/js/motion.js"></script><script src="assets/js/auth.js"></script><script src="assets/js/ask-ai.js"></script><script>
+document.addEventListener("aldetic:ready", async () => {
+  const db = window.aldeticDb, $ = id => document.getElementById(id);
+  const say = t => { $("state").textContent = t; $("state").hidden = !t; };
+  const ERR = { too_many_projects: "Limite de 20 projets actifs atteinte.", slug_taken: "Un projet porte déjà ce nom.", name: "Le nom doit contenir entre 2 et 80 caractères.", auth: "Connexion requise." };
+  let me = null, tab = "mine", items = [];
+  const slugOf = n => { let s = n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50); if (s.length < 3) s = (s + "-projet").replace(/^-+/, ""); return s; };
+  const ago = d => { const m = Math.max(0, Math.round((Date.now() - new Date(d)) / 60000)); return m < 60 ? m + " min" : m < 1440 ? Math.round(m / 60) + " h" : Math.round(m / 1440) + " j"; };
+  if (!db) { say(tr("Le service de comptes n'est pas configuré.")); return; }
+  const { data: sess } = await db.auth.getSession();
+  if (!sess || !sess.session) { location.href = "connexion.html"; return; }
+  me = sess.session.user.id;
+  function render() {
+    const v = $("pq").value.trim().toLowerCase();
+    const shown = items.filter(p => (tab === "mine" ? p.owner_id === me : p.owner_id !== me && p.visibility === "public" && p.status === "active") && (p.name.toLowerCase().includes(v) || (p.description || "").toLowerCase().includes(v)));
+    $("plist").innerHTML = shown.map(p => {
+      const mine = p.owner_id === me;
+      return `<article class="ocard" data-id="${esc(p.id)}"><div class="oc-ico">${esc(p.name.slice(0, 2).toUpperCase())}</div><div><div class="oc-t">${esc(p.name)}</div><div class="oc-m">${esc(p.slug)} · ${esc(tr("modifié il y a"))} ${esc(ago(p.updated_at))}</div>${p.description ? `<div class="oc-m">${esc(p.description)}</div>` : ""}</div>
+      <span class="pill ${p.status === "archived" ? "warn" : p.visibility === "public" ? "ok" : ""}">${esc(tr(p.status === "archived" ? "Archivé" : p.visibility === "public" ? "Public" : "Privé"))}</span>
+      <div class="oc-chips"><a class="btn small" href="editor.html?p=${esc(p.id)}">${esc(tr(mine && p.status === "active" ? "Ouvrir dans l'éditeur" : "Voir"))}</a>${mine ? `<button class="btn small ghost" data-vis="${esc(p.id)}" type="button">${esc(tr(p.visibility === "public" ? "Rendre privé" : "Rendre public"))}</button><button class="btn small ghost" data-arch="${esc(p.id)}" type="button">${esc(tr(p.status === "archived" ? "Restaurer" : "Archiver"))}</button>` : ""}</div></article>`;
+    }).join("");
+    $("pempty").hidden = shown.length > 0;
+  }
+  async function load() {
+    const { data, error } = await db.from("projects").select("id, owner_id, slug, name, description, visibility, status, updated_at").order("updated_at", { ascending: false }).limit(200);
+    if (error) { say(tr("Impossible de charger les projets. Réessayez.")); return; }
+    say(""); items = data || []; render();
+  }
+  const setTab = t => { tab = t; $("t-mine").setAttribute("aria-pressed", String(t === "mine")); $("t-public").setAttribute("aria-pressed", String(t === "public")); render(); };
+  $("t-mine").addEventListener("click", () => setTab("mine")); $("t-public").addEventListener("click", () => setTab("public"));
+  $("pq").addEventListener("input", render);
+  $("new-toggle").addEventListener("click", () => { $("new-form").hidden = !$("new-form").hidden; if (!$("new-form").hidden) $("n-name").focus(); });
+  $("new-form").addEventListener("submit", async ev => {
+    ev.preventDefault(); $("n-err").textContent = "";
+    const name = $("n-name").value.trim();
+    if (name.length < 2 || name.length > 80) { $("n-err").textContent = tr(ERR.name); return; }
+    $("n-go").disabled = true;
+    let slug = slugOf(name), res;
+    for (let i = 0; i < 2; i++) {
+      res = await db.from("projects").insert({ slug, name, description: $("n-desc").value.trim(), visibility: $("n-vis").value }).select("id").single();
+      if (!res.error || !String(res.error.message).includes("duplicate")) break;
+      slug = slug.slice(0, 54) + "-" + Math.random().toString(36).slice(2, 6);
+    }
+    $("n-go").disabled = false;
+    if (res.error) { const m = String(res.error.message); $("n-err").textContent = tr(m.includes("too_many_projects") ? ERR.too_many_projects : m.includes("duplicate") ? ERR.slug_taken : "Création impossible. Réessayez."); return; }
+    location.href = "editor.html?p=" + encodeURIComponent(res.data.id);
+  });
+  $("plist").addEventListener("click", async e => {
+    const v = e.target.closest("[data-vis]"), a = e.target.closest("[data-arch]"); if (!v && !a) return;
+    const p = items.find(x => x.id === (v || a).dataset[v ? "vis" : "arch"]); if (!p) return;
+    const patch = v ? { visibility: p.visibility === "public" ? "private" : "public" } : { status: p.status === "archived" ? "active" : "archived" };
+    const { error } = await db.from("projects").update(patch).eq("id", p.id);
+    if (error) { toast(tr("Une erreur est survenue. Réessayez.")); return; }
+    await load();
+  });
+  await load();
+});
+</script>
+
+
+</body></html>
